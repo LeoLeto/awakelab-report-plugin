@@ -217,12 +217,6 @@ echo '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px
 // If no categories selected, select all by default
 $all_selected = empty($categoryids);
 
-// Select All tag
-$all_class = $all_selected ? 'category-tag active' : 'category-tag';
-echo '<div class="' . $all_class . '" data-catid="all" style="padding: 8px 16px; border-radius: 20px; cursor: pointer; user-select: none; transition: all 0.2s; font-weight: 500;">';
-echo get_string('allcategories', 'report_questionbank');
-echo '</div>';
-
 foreach ($categories as $cat) {
     $is_selected = ($all_selected || in_array($cat->id, $categoryids));
     $tag_class = $is_selected ? 'category-tag active' : 'category-tag';
@@ -231,7 +225,10 @@ foreach ($categories as $cat) {
     echo '</div>';
 }
 echo '</div>';
-echo '<button type="submit" class="btn btn-primary">Filtrar</button>';
+echo '<div style="display: flex; gap: 10px;">';
+echo '<button type="button" id="selectAllBtn" class="btn btn-outline-secondary">Seleccionar todas las categorías</button>';
+echo '<button type="submit" class="btn btn-outline-primary">Aplicar filtro</button>';
+echo '</div>';
 echo '</div>';
 echo '</form>';
 echo '</div>';
@@ -260,38 +257,29 @@ echo '</style>';
 echo '<script>';
 echo 'document.addEventListener("DOMContentLoaded", function() {';
 echo '    var tags = document.querySelectorAll(".category-tag");';
-echo '    var allTag = document.querySelector(".category-tag[data-catid=\'all\']");';
+echo '    var selectAllBtn = document.getElementById("selectAllBtn");';
 echo '    var form = document.getElementById("categoryFilterForm");';
 echo '    ';
 echo '    tags.forEach(function(tag) {';
 echo '        tag.addEventListener("click", function() {';
-echo '            var catid = tag.getAttribute("data-catid");';
-echo '            ';
-echo '            if (catid === "all") {';
-echo '                var isActive = tag.classList.contains("active");';
-echo '                tags.forEach(function(t) {';
-echo '                    if (isActive) {';
-echo '                        t.classList.remove("active");';
-echo '                    } else {';
-echo '                        t.classList.add("active");';
-echo '                    }';
-echo '                });';
+echo '            tag.classList.toggle("active");';
+echo '        });';
+echo '    });';
+echo '    ';
+echo '    selectAllBtn.addEventListener("click", function() {';
+echo '        var allActive = Array.from(tags).every(function(t) { return t.classList.contains("active"); });';
+echo '        tags.forEach(function(tag) {';
+echo '            if (allActive) {';
+echo '                tag.classList.remove("active");';
 echo '            } else {';
-echo '                tag.classList.toggle("active");';
-echo '                allTag.classList.remove("active");';
-echo '                ';
-echo '                var categoryTags = Array.from(tags).filter(function(t) { return t.getAttribute("data-catid") !== "all"; });';
-echo '                var allActive = categoryTags.every(function(t) { return t.classList.contains("active"); });';
-echo '                if (allActive) {';
-echo '                    allTag.classList.add("active");';
-echo '                }';
+echo '                tag.classList.add("active");';
 echo '            }';
 echo '        });';
 echo '    });';
 echo '    ';
 echo '    form.addEventListener("submit", function(e) {';
 echo '        var activeTags = Array.from(tags).filter(function(t) {';
-echo '            return t.classList.contains("active") && t.getAttribute("data-catid") !== "all";';
+echo '            return t.classList.contains("active");';
 echo '        });';
 echo '        ';
 echo '        activeTags.forEach(function(tag) {';
