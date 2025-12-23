@@ -69,25 +69,25 @@ class excel_export {
         $formattext->set_align('top');
         
         // Set column widths.
-        $worksheet->set_column(0, 0, 25); // Question ID
+        $worksheet->set_column(0, 0, 8);  // ID
         $worksheet->set_column(1, 1, 30); // Question Name
         $worksheet->set_column(2, 2, 40); // Question Text
         $worksheet->set_column(3, 3, 15); // Question Type
         $worksheet->set_column(4, 4, 20); // Category
-        $worksheet->set_column(5, 5, 40); // Answer
+        $worksheet->set_column(5, 5, 50); // Answer
         $worksheet->set_column(6, 6, 12); // Is Correct
-        $worksheet->set_column(7, 7, 10); // Fraction
+        $worksheet->set_column(7, 7, 10); // Puntaje
         
         // Write header row.
         $row = 0;
-        $worksheet->write($row, 0, get_string('questionname', 'report_questionbank') . ' ID', $formatheader);
+        $worksheet->write($row, 0, 'ID', $formatheader);
         $worksheet->write($row, 1, get_string('questionname', 'report_questionbank'), $formatheader);
         $worksheet->write($row, 2, get_string('questiontext', 'report_questionbank'), $formatheader);
         $worksheet->write($row, 3, get_string('questiontype', 'report_questionbank'), $formatheader);
         $worksheet->write($row, 4, get_string('category', 'report_questionbank'), $formatheader);
         $worksheet->write($row, 5, get_string('answers', 'report_questionbank'), $formatheader);
         $worksheet->write($row, 6, get_string('correctanswer', 'report_questionbank'), $formatheader);
-        $worksheet->write($row, 7, 'Fraction', $formatheader);
+        $worksheet->write($row, 7, 'Puntaje', $formatheader);
         
         $row++;
         
