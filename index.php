@@ -77,10 +77,10 @@ $sql .= " ORDER BY qc.name, q.name";
 
 $questions = $DB->get_records_sql($sql, $params);
 
-// Handle CSV download.
-if ($download === 'csv') {
-    require_once($CFG->dirroot . '/report/questionbank/classes/csv_export.php');
-    $exporter = new \report_questionbank\csv_export();
+// Handle Excel download.
+if ($download === 'excel') {
+    require_once($CFG->dirroot . '/report/questionbank/classes/excel_export.php');
+    $exporter = new \report_questionbank\excel_export();
     $exporter->export_questions($questions, $course->shortname);
     exit;
 }
@@ -226,8 +226,8 @@ if (!empty($questions)) {
     echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
     echo '</a>';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=csv" class="btn btn-secondary">';
-    echo get_string('downloadcsv', 'report_questionbank');
+    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=excel" class="btn btn-secondary">';
+    echo get_string('downloadexcel', 'report_questionbank');
     echo '</a>';
     echo '</div>';
 }
