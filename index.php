@@ -223,11 +223,11 @@ echo '</div>';
 // Download button.
 if (!empty($questions)) {
     echo '<div class="download-button-container">';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=csv" class="btn btn-primary" style="margin-right: 10px;">';
-    echo get_string('downloadcsv', 'report_questionbank');
-    echo '</a>';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=pdf" class="btn btn-secondary">';
+    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
+    echo '</a>';
+    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=csv" class="btn btn-secondary">';
+    echo get_string('downloadcsv', 'report_questionbank');
     echo '</a>';
     echo '</div>';
 }
