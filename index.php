@@ -27,7 +27,7 @@ require_once($CFG->libdir.'/adminlib.php');
 
 // Get the course ID from the URL parameter.
 $courseid = required_param('id', PARAM_INT);
-$categoryid = optional_param('categoryid', 0, PARAM_INT);
+$categoryids = optional_param_array('categoryids', array(), PARAM_INT);
 $download = optional_param('download', '', PARAM_ALPHA);
 
 // Get the course and ensure user is logged in.
@@ -68,9 +68,10 @@ $sql = "SELECT q.id, q.name, q.questiontext, q.qtype, qc.name as categoryname, q
 
 $params = array('contextid' => $context->id);
 
-if ($categoryid > 0) {
-    $sql .= " AND qc.id = :categoryid";
-    $params['categoryid'] = $categoryid;
+if (!empty($categoryids)) {
+    list($insql, $inparams) = $DB->get_in_or_equal($categoryids, SQL_PARAMS_NAMED);
+    $sql .= " AND qc.id $insql";
+    $params = array_merge($params, $inparams);
 }
 
 $sql .= " ORDER BY qc.name, q.name";
@@ -207,26 +208,40 @@ echo $OUTPUT->heading(get_string('title', 'report_questionbank'));
 
 // Category filter.
 echo '<div class="question-bank-filters">';
-echo '<form method="get" action="index.php">';
+echo '<form method="get" action="index.php" id="categoryFilterForm">';
 echo '<input type="hidden" name="id" value="' . $courseid . '" />';
-echo '<label for="categoryid">' . get_string('filterbycategory', 'report_questionbank') . ': </label>';
-echo '<select name="categoryid" id="categoryid" onchange="this.form.submit()">';
-echo '<option value="0">' . get_string('allcategories', 'report_questionbank') . '</option>';
+echo '<label for="categoryids">' . get_string('filterbycategory', 'report_questionbank') . ': </label>';
+echo '<select name="categoryids[]" id="categoryids" multiple size="5" style="min-width: 250px;">';
 foreach ($categories as $cat) {
-    $selected = ($cat->id == $categoryid) ? 'selected' : '';
+    $selected = in_array($cat->id, $categoryids) ? 'selected' : '';
     echo '<option value="' . $cat->id . '" ' . $selected . '>' . format_string($cat->name) . '</option>';
 }
 echo '</select>';
+echo '<button type="submit" class="btn btn-secondary" style="margin-left: 10px;">Filtrar</button>';
 echo '</form>';
 echo '</div>';
+echo '<script>';
+echo 'document.addEventListener("DOMContentLoaded", function() {';
+echo '    var selectElement = document.getElementById("categoryids");';
+echo '    if (selectElement.options.length === 0 || (selectElement.selectedOptions.length === 0)) {';
+echo '        for (var i = 0; i < selectElement.options.length; i++) {';
+echo '            selectElement.options[i].selected = true;';
+echo '        }';
+echo '    }';
+echo '});';
+echo '</script>';
 
 // Download button.
 if (!empty($questions)) {
+    $categoryparams = '';
+    foreach ($categoryids as $catid) {
+        $categoryparams .= '&categoryids[]=' . $catid;
+    }
     echo '<div class="download-button-container">';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
+    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
     echo '</a>';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=excel" class="btn btn-secondary">';
+    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=excel" class="btn btn-secondary">';
     echo get_string('downloadexcel', 'report_questionbank');
     echo '</a>';
     echo '</div>';
