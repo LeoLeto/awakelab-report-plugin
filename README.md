@@ -32,4 +32,4 @@ This plugin allows teachers and administrators to visualize and download all que
 GNU GPL v3 or later
 
 ## Author
-Your Name (2025)
+Awakelab (2025)

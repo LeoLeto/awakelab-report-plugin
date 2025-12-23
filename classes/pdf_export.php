@@ -18,7 +18,7 @@
  * PDF export functionality for question bank report.
  *
  * @package    report_questionbank
- * @copyright  2025 Your Name
+ * @copyright  2025 Awakelab
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
