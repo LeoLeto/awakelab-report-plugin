@@ -32,6 +32,7 @@ $string['category'] = 'Category';
 $string['answers'] = 'Answers';
 $string['correctanswer'] = 'Correct Answer';
 $string['downloadcsv'] = 'Download as CSV';
+$string['downloadpdf'] = 'Download as PDF';
 $string['noquestions'] = 'No questions found in this course.';
 $string['filterbycategory'] = 'Filter by category';
 $string['allcategories'] = 'All categories';

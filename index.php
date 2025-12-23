@@ -85,6 +85,14 @@ if ($download === 'csv') {
     exit;
 }
 
+// Handle PDF download.
+if ($download === 'pdf') {
+    require_once($CFG->dirroot . '/report/questionbank/classes/pdf_export.php');
+    $exporter = new \report_questionbank\pdf_export();
+    $exporter->export_questions($questions, $course->shortname);
+    exit;
+}
+
 // Output page.
 echo $OUTPUT->header();
 
@@ -215,8 +223,11 @@ echo '</div>';
 // Download button.
 if (!empty($questions)) {
     echo '<div class="download-button-container">';
-    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=csv" class="btn btn-primary">';
+    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=csv" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadcsv', 'report_questionbank');
+    echo '</a>';
+    echo '<a href="index.php?id=' . $courseid . '&categoryid=' . $categoryid . '&download=pdf" class="btn btn-secondary">';
+    echo get_string('downloadpdf', 'report_questionbank');
     echo '</a>';
     echo '</div>';
 }
