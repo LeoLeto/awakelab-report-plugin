@@ -48,8 +48,8 @@ class pdf_export extends \pdf {
         // Set document information
         $this->SetCreator('Moodle Question Bank Report');
         $this->SetAuthor('Moodle');
-        $this->SetTitle('Question Bank Report - ' . $coursename);
-        $this->SetSubject('Question Bank Export');
+        $this->SetTitle(get_string('title', 'report_questionbank') . ' - ' . $coursename);
+        $this->SetSubject(get_string('title', 'report_questionbank'));
         
         // Set default monospaced font
         $this->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
@@ -67,7 +67,7 @@ class pdf_export extends \pdf {
         
         // Set font for title
         $this->SetFont('helvetica', 'B', 16);
-        $this->Cell(0, 10, 'Question Bank Report', 0, 1, 'C');
+        $this->Cell(0, 10, get_string('title', 'report_questionbank'), 0, 1, 'C');
         $this->SetFont('helvetica', '', 12);
         $this->Cell(0, 10, $coursename, 0, 1, 'C');
         $this->Ln(5);
@@ -81,7 +81,7 @@ class pdf_export extends \pdf {
             $this->SetFont('helvetica', 'B', 12);
             $this->SetFillColor(15, 108, 191);
             $this->SetTextColor(255, 255, 255);
-            $this->Cell(0, 8, 'Question: ' . $this->clean_text($question->name), 0, 1, 'L', true);
+            $this->Cell(0, 8, get_string('questionname', 'report_questionbank') . ': ' . $this->clean_text($question->name), 0, 1, 'L', true);
             $this->SetTextColor(0, 0, 0);
             
             // Question details
@@ -89,34 +89,34 @@ class pdf_export extends \pdf {
             
             // Type and Category
             $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(40, 6, 'Type:', 0, 0);
+            $this->Cell(40, 6, get_string('questiontype', 'report_questionbank') . ':', 0, 0);
             $this->SetFont('helvetica', '', 10);
             $this->Cell(60, 6, $question->qtype, 0, 0);
             $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(40, 6, 'Category:', 0, 0);
+            $this->Cell(40, 6, get_string('category', 'report_questionbank') . ':', 0, 0);
             $this->SetFont('helvetica', '', 10);
             $this->Cell(0, 6, $this->clean_text($question->categoryname), 0, 1);
             
             // Question text
             $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(0, 6, 'Question Text:', 0, 1);
+            $this->Cell(0, 6, get_string('questiontext', 'report_questionbank') . ':', 0, 1);
             $this->SetFont('helvetica', '', 10);
             $this->MultiCell(0, 6, $this->clean_text($question->questiontext), 0, 'L');
             
             // Answers
             if (!empty($answers)) {
                 $this->SetFont('helvetica', 'B', 10);
-                $this->Cell(0, 6, 'Answers:', 0, 1);
+                $this->Cell(0, 6, get_string('answers', 'report_questionbank') . ':', 0, 1);
                 $this->SetFont('helvetica', '', 10);
                 
                 foreach ($answers as $answer) {
-                    $correct = ($answer->fraction > 0) ? ' [CORRECT]' : '';
+                    $correct = ($answer->fraction > 0) ? ' [' . strtoupper(get_string('correctanswer', 'report_questionbank')) . ']' : '';
                     $this->Cell(10, 6, '•', 0, 0);
                     $this->MultiCell(0, 6, $this->clean_text($answer->answer) . $correct, 0, 'L');
                 }
             } else {
                 $this->SetFont('helvetica', 'I', 10);
-                $this->Cell(0, 6, 'No answers', 0, 1);
+                $this->Cell(0, 6, get_string('noquestions', 'report_questionbank'), 0, 1);
             }
             
             $this->Ln(5);
