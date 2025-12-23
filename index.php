@@ -210,24 +210,51 @@ echo $OUTPUT->heading(get_string('title', 'report_questionbank'));
 echo '<div class="question-bank-filters">';
 echo '<form method="get" action="index.php" id="categoryFilterForm">';
 echo '<input type="hidden" name="id" value="' . $courseid . '" />';
-echo '<label for="categoryids">' . get_string('filterbycategory', 'report_questionbank') . ': </label>';
-echo '<select name="categoryids[]" id="categoryids" multiple size="5" style="min-width: 250px;">';
+echo '<div style="margin-bottom: 15px;">';
+echo '<label style="font-weight: bold; display: block; margin-bottom: 8px;">' . get_string('filterbycategory', 'report_questionbank') . ':</label>';
+echo '<div style="display: flex; align-items: flex-start; gap: 15px;">';
+echo '<div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto; min-width: 300px;">';
+
+// If no categories selected, select all by default
+$all_selected = empty($categoryids);
+
+echo '<div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #ddd;">';
+echo '<label style="font-weight: normal; cursor: pointer;">';
+echo '<input type="checkbox" id="selectAllCategories" style="margin-right: 5px;" ' . ($all_selected ? 'checked' : '') . '>';
+echo '<strong>' . get_string('allcategories', 'report_questionbank') . '</strong>';
+echo '</label>';
+echo '</div>';
+
 foreach ($categories as $cat) {
-    $selected = in_array($cat->id, $categoryids) ? 'selected' : '';
-    echo '<option value="' . $cat->id . '" ' . $selected . '>' . format_string($cat->name) . '</option>';
+    $checked = ($all_selected || in_array($cat->id, $categoryids)) ? 'checked' : '';
+    echo '<div style="margin: 5px 0;">';
+    echo '<label style="font-weight: normal; cursor: pointer; display: block;">';
+    echo '<input type="checkbox" name="categoryids[]" value="' . $cat->id . '" class="category-checkbox" style="margin-right: 5px;" ' . $checked . '>';
+    echo format_string($cat->name);
+    echo '</label>';
+    echo '</div>';
 }
-echo '</select>';
-echo '<button type="submit" class="btn btn-secondary" style="margin-left: 10px;">Filtrar</button>';
+echo '</div>';
+echo '<button type="submit" class="btn btn-primary">Filtrar</button>';
+echo '</div>';
+echo '</div>';
 echo '</form>';
 echo '</div>';
 echo '<script>';
 echo 'document.addEventListener("DOMContentLoaded", function() {';
-echo '    var selectElement = document.getElementById("categoryids");';
-echo '    if (selectElement.options.length === 0 || (selectElement.selectedOptions.length === 0)) {';
-echo '        for (var i = 0; i < selectElement.options.length; i++) {';
-echo '            selectElement.options[i].selected = true;';
-echo '        }';
-echo '    }';
+echo '    var selectAll = document.getElementById("selectAllCategories");';
+echo '    var checkboxes = document.querySelectorAll(".category-checkbox");';
+echo '    selectAll.addEventListener("change", function() {';
+echo '        checkboxes.forEach(function(cb) {';
+echo '            cb.checked = selectAll.checked;';
+echo '        });';
+echo '    });';
+echo '    checkboxes.forEach(function(cb) {';
+echo '        cb.addEventListener("change", function() {';
+echo '            var allChecked = Array.from(checkboxes).every(function(c) { return c.checked; });';
+echo '            selectAll.checked = allChecked;';
+echo '        });';
+echo '    });';
 echo '});';
 echo '</script>';
 
