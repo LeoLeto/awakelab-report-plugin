@@ -210,8 +210,16 @@ echo '<div style="text-align: right; margin-bottom: 10px; color: #666; font-size
 echo 'Versión: ' . $plugin->release;
 echo '</div>';
 
+// Advanced options toggle
+echo '<div style="margin-bottom: 20px;">';
+echo '<label style="cursor: pointer; user-select: none;">';
+echo '<input type="checkbox" id="advancedOptionsToggle" style="margin-right: 8px;">';
+echo '<span style="font-weight: bold;">Opciones Avanzadas</span>';
+echo '</label>';
+echo '</div>';
+
 // Category filter.
-echo '<div class="question-bank-filters">';
+echo '<div class="question-bank-filters" id="filterSection" style="display: none;">';
 echo '<form method="get" action="index.php" id="categoryFilterForm">';
 echo '<input type="hidden" name="id" value="' . $courseid . '" />';
 echo '<div style="margin-bottom: 20px;">';
@@ -230,7 +238,7 @@ foreach ($categories as $cat) {
 }
 echo '</div>';
 echo '<div style="display: flex; gap: 10px;">';
-echo '<button type="button" id="selectAllBtn" class="btn btn-outline-secondary">Seleccionar todas las categorías</button>';
+echo '<button type="button" id="selectAllBtn" class="btn btn-outline-secondary">Seleccionar todas las unidades</button>';
 echo '<button type="submit" class="btn btn-outline-primary">Aplicar filtro</button>';
 echo '</div>';
 echo '</div>';
@@ -263,6 +271,22 @@ echo 'document.addEventListener("DOMContentLoaded", function() {';
 echo '    var tags = document.querySelectorAll(".category-tag");';
 echo '    var selectAllBtn = document.getElementById("selectAllBtn");';
 echo '    var form = document.getElementById("categoryFilterForm");';
+echo '    var advancedToggle = document.getElementById("advancedOptionsToggle");';
+echo '    var filterSection = document.getElementById("filterSection");';
+echo '    var excelButton = document.getElementById("excelButton");';
+echo '    ';
+echo '    // Toggle advanced options';
+echo '    if (advancedToggle) {';
+echo '        advancedToggle.addEventListener("change", function() {';
+echo '            if (this.checked) {';
+echo '                filterSection.style.display = "block";';
+echo '                if (excelButton) excelButton.style.display = "inline-block";';
+echo '            } else {';
+echo '                filterSection.style.display = "none";';
+echo '                if (excelButton) excelButton.style.display = "none";';
+echo '            }';
+echo '        });';
+echo '    }';
 echo '    ';
 echo '    tags.forEach(function(tag) {';
 echo '        tag.addEventListener("click", function() {';
@@ -307,7 +331,7 @@ if (!empty($questions)) {
     echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
     echo '</a>';
-    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=excel" class="btn btn-secondary">';
+    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=excel" class="btn btn-secondary" id="excelButton" style="display: none;">';
     echo get_string('downloadexcel', 'report_questionbank');
     echo '</a>';
     echo '</div>';
