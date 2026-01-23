@@ -25,6 +25,9 @@
 require_once('../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 
+// Load plugin version information
+require_once($CFG->dirroot . '/report/questionbank/version.php');
+
 // Get the course ID from the URL parameter.
 $courseid = required_param('id', PARAM_INT);
 $categoryids = optional_param_array('categoryids', array(), PARAM_INT);
@@ -156,23 +159,19 @@ echo '<style>
 }
 .question-bank-table th:nth-child(1),
 .question-bank-table td:nth-child(1) {
-    width: 15%;
+    width: 30%;
 }
 .question-bank-table th:nth-child(2),
 .question-bank-table td:nth-child(2) {
-    width: 25%;
+    width: 10%;
 }
 .question-bank-table th:nth-child(3),
 .question-bank-table td:nth-child(3) {
-    width: 10%;
+    width: 20%;
 }
 .question-bank-table th:nth-child(4),
 .question-bank-table td:nth-child(4) {
-    width: 15%;
-}
-.question-bank-table th:nth-child(5),
-.question-bank-table td:nth-child(5) {
-    width: 35%;
+    width: 40%;
 }
 .question-bank-table th {
     background-color: #0f6cbf;
@@ -205,6 +204,11 @@ echo '<style>
 </style>';
 
 echo $OUTPUT->heading(get_string('title', 'report_questionbank'));
+
+// Display version label
+echo '<div style="text-align: right; margin-bottom: 10px; color: #666; font-size: 12px;">';
+echo 'Versión: ' . $plugin->release;
+echo '</div>';
 
 // Category filter.
 echo '<div class="question-bank-filters">';
@@ -317,7 +321,6 @@ if (empty($questions)) {
     echo '<table class="generaltable question-bank-table">';
     echo '<thead>';
     echo '<tr>';
-    echo '<th>' . get_string('questionname', 'report_questionbank') . '</th>';
     echo '<th>' . get_string('questiontext', 'report_questionbank') . '</th>';
     echo '<th>' . get_string('questiontype', 'report_questionbank') . '</th>';
     echo '<th>' . get_string('category', 'report_questionbank') . '</th>';
@@ -328,8 +331,7 @@ if (empty($questions)) {
     
     foreach ($questions as $question) {
         echo '<tr>';
-        echo '<td>' . format_string($question->name) . '</td>';
-        echo '<td>' . format_text($question->questiontext, FORMAT_HTML) . '</td>';
+        echo '<td>' . strip_tags($question->questiontext) . '</td>';
         echo '<td>' . format_string($question->qtype) . '</td>';
         echo '<td>' . format_string($question->categoryname) . '</td>';
         
