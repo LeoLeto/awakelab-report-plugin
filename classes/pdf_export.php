@@ -48,87 +48,216 @@ class pdf_export extends \pdf {
         // Set document information
         $this->SetCreator('Moodle Question Bank Report');
         $this->SetAuthor('Moodle');
-        $this->SetTitle(get_string('title', 'report_questionbank') . ' - ' . $coursename);
-        $this->SetSubject(get_string('title', 'report_questionbank'));
+        $this->SetTitle('Informe del Banco de Preguntas - ' . $coursename);
+        $this->SetSubject('Informe del Banco de Preguntas');
         
         // Set default monospaced font
         $this->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
         
-        // Set margins
-        $this->SetMargins(15, 15, 15);
+        // Set margins - increased padding
+        $this->SetMargins(30, 30, 30);
         $this->SetHeaderMargin(5);
-        $this->SetFooterMargin(10);
+        $this->SetFooterMargin(18);
         
         // Set auto page breaks
-        $this->SetAutoPageBreak(true, 15);
+        $this->SetAutoPageBreak(true, 30);
         
-        // Add a page
+        // 1. Cover page - Title
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 32);
+        $this->Ln(80);
+        $this->Cell(0, 20, 'Informe del Banco de Preguntas', 0, 1, 'C');
+        $this->SetFont('helvetica', '', 18);
+        $this->Ln(10);
+        $this->Cell(0, 15, $this->clean_text($coursename), 0, 1, 'C');
+        
+        // 2. EXAMEN FINAL cover page
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 20);
+        $this->Ln(80);
+        $this->Cell(0, 15, 'EXAMEN FINAL', 0, 1, 'C');
+        
+        // 2b. EXAMEN FINAL content page
         $this->AddPage();
         
-        // Set font for title
-        $this->SetFont('helvetica', 'B', 16);
-        $this->Cell(0, 10, get_string('title', 'report_questionbank'), 0, 1, 'C');
-        $this->SetFont('helvetica', '', 12);
-        $this->Cell(0, 10, $coursename, 0, 1, 'C');
-        $this->Ln(5);
+        // Description text
+        $this->SetFont('helvetica', '', 11);
+        $description = 'Las preguntas del curso se estructuran en bancos de preguntas que contienen un número superior al de ítems incluidos en cada test. Esta organización tiene como objetivo que, en caso de que el alumnado rehaga el cuestionario, se le presenten preguntas diferentes en cada intento. Asimismo, de estos mismos bancos de preguntas se extraen los ítems que conforman el test final del curso.';
+        $this->MultiCell(0, 5, $description, 0, 'L');
+        $this->Ln(10);
         
-        // Process each question
+        // Random sample of 5-10 questions
+        $sample_count = min(max(5, min(10, count($questions))), count($questions));
+        $sample_questions = $this->get_random_questions($questions, $sample_count);
+        
+        // Sample header with same style as unit headers (flush with question background)
+        $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+        $this->SetX($this->lMargin);
+        $this->SetFont('helvetica', 'B', 14);
+        $this->SetFillColor(15, 108, 191);
+        $this->SetTextColor(255, 255, 255);
+        $this->Cell($headerwidth, 14, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 1, 'L', true);
+        $this->SetTextColor(0, 0, 0);
+        $this->Ln(10);
+        
+        foreach ($sample_questions as $question) {
+            $this->display_question($question, $DB);
+        }
+        
+        // 3. EVALUACIÓN PARCIAL cover page
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 20);
+        $this->Ln(80);
+        $this->Cell(0, 15, 'EVALUACIÓN PARCIAL', 0, 1, 'C');
+        
+        // 4. Questions grouped by unit
+        // Group questions by category
+        $grouped_questions = array();
         foreach ($questions as $question) {
-            // Get answers for this question
-            $answers = $DB->get_records('question_answers', array('question' => $question->id));
+            $category = $question->categoryname;
+            if (!isset($grouped_questions[$category])) {
+                $grouped_questions[$category] = array();
+            }
+            $grouped_questions[$category][] = $question;
+        }
+        
+        // Display each unit with max 5 questions
+        $unit_number = 1;
+        foreach ($grouped_questions as $unit => $unit_questions) {
+            $this->AddPage();
             
-            // Question header
-            $this->SetFont('helvetica', 'B', 12);
+            // Unit header flush with question background
+            $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $this->SetX($this->lMargin);
+            $this->SetFont('helvetica', 'B', 14);
             $this->SetFillColor(15, 108, 191);
             $this->SetTextColor(255, 255, 255);
-            $this->Cell(0, 8, get_string('questionname', 'report_questionbank') . ': ' . $this->clean_text($question->name), 0, 1, 'L', true);
+            $this->Cell($headerwidth, 14, 'Unidad ' . $unit_number . ': ' . $this->clean_text($unit), 0, 1, 'L', true);
             $this->SetTextColor(0, 0, 0);
+            $this->Ln(10);
+            $unit_number++;
             
-            // Question details
-            $this->SetFont('helvetica', '', 10);
-            
-            // Type and Category
-            $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(40, 6, get_string('questiontype', 'report_questionbank') . ':', 0, 0);
-            $this->SetFont('helvetica', '', 10);
-            $this->Cell(60, 6, $question->qtype, 0, 0);
-            $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(40, 6, get_string('category', 'report_questionbank') . ':', 0, 0);
-            $this->SetFont('helvetica', '', 10);
-            $this->Cell(0, 6, $this->clean_text($question->categoryname), 0, 1);
-            
-            // Question text
-            $this->SetFont('helvetica', 'B', 10);
-            $this->Cell(0, 6, get_string('questiontext', 'report_questionbank') . ':', 0, 1);
-            $this->SetFont('helvetica', '', 10);
-            $this->MultiCell(0, 6, $this->clean_text($question->questiontext), 0, 'L');
-            
-            // Answers
-            if (!empty($answers)) {
-                $this->SetFont('helvetica', 'B', 10);
-                $this->Cell(0, 6, get_string('answers', 'report_questionbank') . ':', 0, 1);
-                $this->SetFont('helvetica', '', 10);
-                
-                foreach ($answers as $answer) {
-                    $correct = ($answer->fraction > 0) ? ' [' . strtoupper(get_string('correctanswer', 'report_questionbank')) . ']' : '';
-                    $this->Cell(10, 6, '•', 0, 0);
-                    $this->MultiCell(0, 6, $this->clean_text($answer->answer) . $correct, 0, 'L');
-                }
-            } else {
-                $this->SetFont('helvetica', 'I', 10);
-                $this->Cell(0, 6, get_string('noquestions', 'report_questionbank'), 0, 1);
+            // Display max 5 questions from this unit
+            $questions_count = min(5, count($unit_questions));
+            for ($i = 0; $i < $questions_count; $i++) {
+                $this->display_question($unit_questions[$i], $DB);
             }
-            
-            $this->Ln(5);
-            
-            // Add a line separator
-            $this->SetDrawColor(200, 200, 200);
-            $this->Line(15, $this->GetY(), $this->getPageWidth() - 15, $this->GetY());
-            $this->Ln(5);
         }
         
         // Output PDF
         $this->Output($filename, 'D');
+    }
+    
+    /**
+     * Display a single question with its answers.
+     *
+     * @param object $question Question object
+     * @param object $DB Database object
+     */
+    private function display_question($question, $DB) {
+        // Get answers for this question
+        $answers = $DB->get_records('question_answers', array('question' => $question->id));
+
+        // Layout settings for breathing room
+        $block_left = $this->lMargin;
+        $block_right = $this->rMargin;
+        $padding_left = 16;
+        $padding_right = 16;
+        $padding_top = 12;
+        $padding_bottom = 24;
+        $content_width = $this->getPageWidth() - $block_left - $block_right - $padding_left - $padding_right;
+
+        // Check if we need a page break FIRST by measuring
+        $test_y = $this->GetY();
+        $this->startTransaction();
+        
+        // Render a test version to measure
+        $this->SetXY($block_left + $padding_left, $test_y + $padding_top);
+        $this->SetFont('helvetica', 'B', 12);
+        $this->MultiCell($content_width, 6, $this->clean_text($question->questiontext), 0, 'L');
+        $this->Ln(8);
+        
+        if (!empty($answers)) {
+            $this->SetFont('helvetica', '', 10);
+            foreach ($answers as $answer) {
+                $correct = ($answer->fraction > 0) ? ' [CORRECTA]' : '';
+                $this->SetX($block_left + $padding_left);
+                $this->Cell(10, 6, '', 0, 0);
+                $this->MultiCell($content_width - 10, 6, $this->clean_text($answer->answer) . $correct, 0, 'L');
+            }
+        }
+        
+        $measured_end_y = $this->GetY();
+        $measured_page = $this->getPage();
+        $this->rollbackTransaction(true);
+        
+        // Calculate needed height
+        $needed_height = ($measured_end_y - $test_y) + $padding_bottom;
+        $available_space = $this->getPageHeight() - $test_y - $this->bMargin;
+        
+        // Add page if needed
+        if ($measured_page !== $this->getPage() || $needed_height > $available_space) {
+            $this->AddPage();
+        }
+        
+        // Now render for real
+        $start_y = $this->GetY();
+        $start_x = $block_left + $padding_left;
+        
+        // Position and render question text
+        $this->SetXY($start_x, $start_y + $padding_top);
+        $this->SetFont('helvetica', 'B', 12);
+        $this->MultiCell($content_width, 6, $this->clean_text($question->questiontext), 0, 'L');
+        $this->Ln(8);
+        
+        // Render answers
+        if (!empty($answers)) {
+            $this->SetFont('helvetica', '', 10);
+            foreach ($answers as $answer) {
+                $correct = ($answer->fraction > 0) ? ' [CORRECTA]' : '';
+                $this->SetX($start_x);
+                $circle_y = $this->GetY() + 3;
+                $this->Circle($start_x + 3, $circle_y, 1.8, 0, 360, 'D');
+                $this->Cell(10, 6, '', 0, 0);
+                $this->MultiCell($content_width - 10, 6, $this->clean_text($answer->answer) . $correct, 0, 'L');
+            }
+        }
+        
+        $end_y = $this->GetY();
+        $actual_height = ($end_y - $start_y) + $padding_bottom;
+        
+        // Draw background rectangle OVER the content
+        $block_width = $this->getPageWidth() - $block_left - $block_right;
+        $this->SetFillColor(220, 235, 250);
+        $this->SetAlpha(0.5); // Make it semi-transparent
+        $this->Rect($block_left, $start_y, $block_width, $actual_height, 'F');
+        $this->SetAlpha(1); // Reset transparency
+        
+        // Move cursor to end of block
+        $this->SetY($start_y + $actual_height);
+        $this->Ln(10);
+    }
+    
+    /**
+     * Get a random selection of questions.
+     *
+     * @param array $questions Array of all questions
+     * @param int $count Number of questions to select
+     * @return array Random selection of questions
+     */
+    private function get_random_questions($questions, $count) {
+        $keys = array_rand($questions, $count);
+        
+        // array_rand returns a single key if count is 1
+        if ($count === 1) {
+            return array($questions[$keys]);
+        }
+        
+        $result = array();
+        foreach ($keys as $key) {
+            $result[] = $questions[$key];
+        }
+        return $result;
     }
     
     /**
@@ -153,15 +282,17 @@ class pdf_export extends \pdf {
      * Page header.
      */
     public function Header() {
-        // No header for this report
+        // Draw page border (4px blue outline) inset for larger margin
+        $this->SetLineStyle(array('width' => 1.5, 'color' => array(15, 108, 191)));
+        $this->Rect(10, 10, $this->getPageWidth() - 20, $this->getPageHeight() - 20, 'D');
     }
     
     /**
      * Page footer.
      */
     public function Footer() {
-        // Position at 15 mm from bottom
-        $this->SetY(-15);
+        // Position at 20 mm from bottom to avoid border overlap
+        $this->SetY(-20);
         // Set font
         $this->SetFont('helvetica', 'I', 8);
         // Page number
