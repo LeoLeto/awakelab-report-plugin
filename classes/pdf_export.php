@@ -90,13 +90,15 @@ class pdf_export extends \pdf {
         $sample_count = min(max(5, min(10, count($questions))), count($questions));
         $sample_questions = $this->get_random_questions($questions, $sample_count);
         
-        // Sample header with same style as unit headers (flush with question background)
+        // Sample header with same style as unit headers (flush with question background, padded, multi-line)
         $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
         $this->SetX($this->lMargin);
         $this->SetFont('helvetica', 'B', 14);
         $this->SetFillColor(15, 108, 191);
         $this->SetTextColor(255, 255, 255);
-        $this->Cell($headerwidth, 14, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 1, 'L', true);
+        $this->setCellPaddings(8, 4, 8, 4);
+        $this->MultiCell($headerwidth, 0, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
+        $this->setCellPaddings(0, 0, 0, 0);
         $this->SetTextColor(0, 0, 0);
         $this->Ln(10);
         
@@ -126,13 +128,15 @@ class pdf_export extends \pdf {
         foreach ($grouped_questions as $unit => $unit_questions) {
             $this->AddPage();
             
-            // Unit header flush with question background
+            // Unit header flush with question background (padded, multi-line)
             $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
             $this->SetX($this->lMargin);
             $this->SetFont('helvetica', 'B', 14);
             $this->SetFillColor(15, 108, 191);
             $this->SetTextColor(255, 255, 255);
-            $this->Cell($headerwidth, 14, 'Unidad ' . $unit_number . ': ' . $this->clean_text($unit), 0, 1, 'L', true);
+            $this->setCellPaddings(8, 4, 8, 4);
+            $this->MultiCell($headerwidth, 0, 'Unidad ' . $unit_number . ': ' . $this->clean_text($unit), 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
+            $this->setCellPaddings(0, 0, 0, 0);
             $this->SetTextColor(0, 0, 0);
             $this->Ln(10);
             $unit_number++;
@@ -161,10 +165,10 @@ class pdf_export extends \pdf {
         // Layout settings for breathing room
         $block_left = $this->lMargin;
         $block_right = $this->rMargin;
-        $padding_left = 16;
-        $padding_right = 16;
-        $padding_top = 12;
-        $padding_bottom = 24;
+        $padding_left = 12;   // slightly tighter left/right padding
+        $padding_right = 12;
+        $padding_top = 10;    // reduced top padding
+        $padding_bottom = 12; // reduced bottom padding
         $content_width = $this->getPageWidth() - $block_left - $block_right - $padding_left - $padding_right;
 
         // Check if we need a page break FIRST by measuring
@@ -207,11 +211,13 @@ class pdf_export extends \pdf {
         // Position and render question text
         $this->SetXY($start_x, $start_y + $padding_top);
         $this->SetFont('helvetica', 'B', 12);
+        $this->SetTextColor(0, 0, 0); // black question text
         $this->MultiCell($content_width, 6, $this->clean_text($question->questiontext), 0, 'L');
         $this->Ln(8);
         
         // Render answers
         if (!empty($answers)) {
+            $this->SetTextColor(0, 0, 0);
             $this->SetFont('helvetica', '', 10);
             foreach ($answers as $answer) {
                 $correct = ($answer->fraction > 0) ? ' [CORRECTA]' : '';
@@ -226,12 +232,30 @@ class pdf_export extends \pdf {
         $end_y = $this->GetY();
         $actual_height = ($end_y - $start_y) + $padding_bottom;
         
-        // Draw background rectangle OVER the content
+        // Draw OPAQUE background rectangle behind the content
         $block_width = $this->getPageWidth() - $block_left - $block_right;
         $this->SetFillColor(220, 235, 250);
-        $this->SetAlpha(0.5); // Make it semi-transparent
         $this->Rect($block_left, $start_y, $block_width, $actual_height, 'F');
-        $this->SetAlpha(1); // Reset transparency
+        
+        // Re-render text on top of background
+        $this->SetXY($start_x, $start_y + $padding_top);
+        $this->SetFont('helvetica', 'B', 12);
+        $this->SetTextColor(0, 0, 0);
+        $this->MultiCell($content_width, 6, $this->clean_text($question->questiontext), 0, 'L');
+        $this->Ln(8);
+        
+        if (!empty($answers)) {
+            $this->SetTextColor(0, 0, 0);
+            $this->SetFont('helvetica', '', 10);
+            foreach ($answers as $answer) {
+                $correct = ($answer->fraction > 0) ? ' [CORRECTA]' : '';
+                $this->SetX($start_x);
+                $circle_y = $this->GetY() + 3;
+                $this->Circle($start_x + 3, $circle_y, 1.8, 0, 360, 'D');
+                $this->Cell(10, 6, '', 0, 0);
+                $this->MultiCell($content_width - 10, 6, $this->clean_text($answer->answer) . $correct, 0, 'L');
+            }
+        }
         
         // Move cursor to end of block
         $this->SetY($start_y + $actual_height);

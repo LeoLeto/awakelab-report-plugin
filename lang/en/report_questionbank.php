@@ -36,4 +36,7 @@ $string['downloadpdf'] = 'Download as PDF';
 $string['noquestions'] = 'No questions found in this course.';
 $string['filterbycategory'] = 'Filter by category';
 $string['allcategories'] = 'All categories';
+$string['quizinformation'] = 'Quiz Information';
+$string['quizname'] = 'Quiz Name';
+$string['questioncount'] = 'Number of Questions';
 $string['privacy:metadata'] = 'The Question Bank Report plugin does not store any personal data.';

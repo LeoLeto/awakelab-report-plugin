@@ -81,6 +81,19 @@ $sql .= " ORDER BY qc.name, q.name";
 
 $questions = $DB->get_records_sql($sql, $params);
 
+// Get quizzes and their random question counts for this course
+$quizzes_sql = "SELECT q.id, q.name, 
+                COUNT(DISTINCT qrs.id) as random_count
+                FROM {quiz} q
+                LEFT JOIN {quiz_slots} qs ON qs.quizid = q.id
+                LEFT JOIN {question_set_references} qsr ON qsr.itemid = qs.id AND qsr.component = 'mod_quiz' AND qsr.questionarea = 'slot'
+                LEFT JOIN {question_references} qr ON qr.itemid = qs.id AND qr.component = 'mod_quiz' AND qr.questionarea = 'slot'
+                LEFT JOIN {question_set_references} qrs ON qrs.itemid = qs.id AND qrs.component = 'mod_quiz' AND qrs.questionarea = 'slot'
+                WHERE q.course = :courseid
+                GROUP BY q.id, q.name
+                ORDER BY q.name";
+$quizzes = $DB->get_records_sql($quizzes_sql, array('courseid' => $courseid));
+
 // Handle Excel download.
 if ($download === 'excel') {
     require_once($CFG->dirroot . '/report/questionbank/classes/excel_export.php');
@@ -221,12 +234,15 @@ echo '</div>';
 echo '<script type="text/javascript">';
 echo 'function toggleAdvancedOptions(checkbox) {';
 echo '    var filterSection = document.getElementById("filterSection");';
+echo '    var quizInfoSection = document.getElementById("quizInfoSection");';
 echo '    var excelButton = document.getElementById("excelButton");';
 echo '    if (checkbox.checked) {';
 echo '        if (filterSection) filterSection.style.display = "block";';
+echo '        if (quizInfoSection) quizInfoSection.style.display = "block";';
 echo '        if (excelButton) excelButton.style.display = "inline-block";';
 echo '    } else {';
 echo '        if (filterSection) filterSection.style.display = "none";';
+echo '        if (quizInfoSection) quizInfoSection.style.display = "none";';
 echo '        if (excelButton) excelButton.style.display = "none";';
 echo '    }';
 echo '}';
@@ -258,6 +274,36 @@ echo '</div>';
 echo '</div>';
 echo '</form>';
 echo '</div>';
+
+// Quiz information section
+if (!empty($quizzes)) {
+    echo '<div class="quiz-info-section" id="quizInfoSection" style="display: none; margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd;">';
+    echo '<h4 style="margin-top: 0; color: #0f6cbf;">' . get_string('quizinformation', 'report_questionbank') . '</h4>';
+    echo '<table class="generaltable" style="width: 100%; background-color: white;">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th style="padding: 10px; text-align: left;">' . get_string('quizname', 'report_questionbank') . '</th>';
+    echo '<th style="padding: 10px; text-align: center; width: 200px;">' . get_string('questioncount', 'report_questionbank') . '</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
+    foreach ($quizzes as $quiz) {
+        // Count total questions in this quiz (including random questions)
+        $slot_count_sql = "SELECT COUNT(*) as total 
+                          FROM {quiz_slots} 
+                          WHERE quizid = :quizid";
+        $slot_count = $DB->get_record_sql($slot_count_sql, array('quizid' => $quiz->id));
+        $total_questions = $slot_count ? $slot_count->total : 0;
+        
+        echo '<tr>';
+        echo '<td style="padding: 10px;">' . format_string($quiz->name) . '</td>';
+        echo '<td style="padding: 10px; text-align: center; font-weight: bold;">' . $total_questions . '</td>';
+        echo '</tr>';
+    }
+    echo '</tbody>';
+    echo '</table>';
+    echo '</div>';
+}
 
 echo '<style>';
 echo '.category-tag {';

@@ -36,4 +36,7 @@ $string['downloadpdf'] = 'Descargar como PDF';
 $string['noquestions'] = 'No se encontraron preguntas en este curso.';
 $string['filterbycategory'] = 'Filtrar por unidad';
 $string['allcategories'] = 'Todas las unidades';
+$string['quizinformation'] = 'Información de Cuestionarios';
+$string['quizname'] = 'Nombre del Cuestionario';
+$string['questioncount'] = 'Número de Preguntas';
 $string['privacy:metadata'] = 'El complemento Informe del Banco de Preguntas no almacena ningún dato personal.';
