@@ -32,6 +32,8 @@ require_once($CFG->dirroot . '/report/questionbank/version.php');
 $courseid = required_param('id', PARAM_INT);
 $categoryids = optional_param_array('categoryids', array(), PARAM_INT);
 $download = optional_param('download', '', PARAM_ALPHA);
+$generatefinalexam = optional_param('generatefinalexam', 1, PARAM_INT);
+$finalexamcategoryid = optional_param('finalexamcategoryid', 0, PARAM_INT);
 
 // Get the course and ensure user is logged in.
 $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
@@ -52,10 +54,12 @@ $PAGE->set_pagelayout('report');
 $PAGE->requires->css('/report/questionbank/styles.css');
 
 // Get question categories for this course.
+// Exclude the root "Top" category by filtering parent = 0
 $categories = $DB->get_records_sql(
     "SELECT qc.* 
      FROM {question_categories} qc
      WHERE qc.contextid = :contextid
+     AND qc.parent != 0
      ORDER BY qc.name",
     array('contextid' => $context->id)
 );
@@ -106,7 +110,7 @@ if ($download === 'excel') {
 if ($download === 'pdf') {
     require_once($CFG->dirroot . '/report/questionbank/classes/pdf_export.php');
     $exporter = new \report_questionbank\pdf_export();
-    $exporter->export_questions($questions, $course->shortname);
+    $exporter->export_questions($questions, $course->shortname, $generatefinalexam, $finalexamcategoryid);
     exit;
 }
 
@@ -223,50 +227,85 @@ echo '<div style="text-align: right; margin-bottom: 10px; color: #666; font-size
 echo 'Versión: ' . $plugin->release;
 echo '</div>';
 
-// Advanced options toggle
-echo '<div style="margin-bottom: 20px;">';
+// Generate final exam toggle
+echo '<div id="finalExamToggleSection" style="margin-bottom: 20px;">';
 echo '<label style="cursor: pointer; user-select: none;">';
-echo '<input type="checkbox" id="advancedOptionsToggle" onclick="toggleAdvancedOptions(this)" style="margin-right: 8px;">';
-echo '<span style="font-weight: bold;">Opciones Avanzadas</span>';
+echo '<input type="checkbox" id="generateFinalExamToggle" ' . ($generatefinalexam ? 'checked' : '') . ' onchange="toggleFinalExamOptions(this)" style="margin-right: 8px;">';
+echo '<span style="font-weight: bold;">' . get_string('generatefinalexamfromunits', 'report_questionbank') . '</span>';
 echo '</label>';
+echo '<div style="padding: 8px 0 0 24px; font-size: 13px; color: #666; line-height: 1.5;">';
+echo get_string('generatefinalexamfromunits_help', 'report_questionbank');
+echo '</div>';
 echo '</div>';
 
 echo '<script type="text/javascript">';
-echo 'function toggleAdvancedOptions(checkbox) {';
-echo '    var filterSection = document.getElementById("filterSection");';
-echo '    var quizInfoSection = document.getElementById("quizInfoSection");';
-echo '    var excelButton = document.getElementById("excelButton");';
-echo '    if (checkbox.checked) {';
-echo '        if (filterSection) filterSection.style.display = "block";';
-echo '        if (quizInfoSection) quizInfoSection.style.display = "block";';
-echo '        if (excelButton) excelButton.style.display = "inline-block";';
-echo '    } else {';
-echo '        if (filterSection) filterSection.style.display = "none";';
-echo '        if (quizInfoSection) quizInfoSection.style.display = "none";';
-echo '        if (excelButton) excelButton.style.display = "none";';
-echo '    }';
+echo 'function toggleFinalExamOptions(checkbox) {';
+echo '    var radios = document.querySelectorAll(".final-exam-radio");';
+echo '    radios.forEach(function(radio) {';
+echo '        radio.disabled = checkbox.checked;';
+echo '        if (checkbox.checked) {';
+echo '            radio.checked = false;';
+echo '        }';
+echo '    });';
 echo '}';
+echo '';
+echo '// Radio-button behavior for final exam selection';
+echo 'document.addEventListener("DOMContentLoaded", function() {';
+echo '    var finalExamRadios = document.querySelectorAll(".final-exam-radio");';
+echo '    finalExamRadios.forEach(function(radio) {';
+echo '        radio.addEventListener("change", function() {';
+echo '            if (this.checked) {';
+echo '                finalExamRadios.forEach(function(r) {';
+echo '                    if (r !== radio) {';
+echo '                        r.checked = false;';
+echo '                    }';
+echo '                });';
+echo '            }';
+echo '        });';
+echo '    });';
+echo '});';
 echo '</script>';
 
 // Category filter.
-echo '<div class="question-bank-filters" id="filterSection" style="display: none;">';
+echo '<div class="question-bank-filters" id="filterSection" style="display: block;">';
 echo '<form method="get" action="index.php" id="categoryFilterForm">';
 echo '<input type="hidden" name="id" value="' . $courseid . '" />';
+echo '<input type="hidden" name="generatefinalexam" id="generateFinalExamHidden" value="' . $generatefinalexam . '" />';
 echo '<div style="margin-bottom: 20px;">';
 echo '<label style="font-weight: bold; display: block; margin-bottom: 12px; font-size: 16px;">' . get_string('filterbycategory', 'report_questionbank') . ':</label>';
-echo '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">';
 
 // If no categories selected, select all by default
 $all_selected = empty($categoryids);
 
+// Display units in a table format
+echo '<table class="generaltable" style="width: 100%; background-color: white; margin-bottom: 15px;">';
+echo '<thead>';
+echo '<tr>';
+echo '<th style="padding: 10px; text-align: left;">' . get_string('unitname', 'report_questionbank') . '</th>';
+echo '<th style="padding: 10px; text-align: center; width: 150px;">Incluir</th>';
+echo '<th style="padding: 10px; text-align: center; width: 200px;">' . get_string('selectasfinalexam', 'report_questionbank') . '</th>';
+echo '</tr>';
+echo '</thead>';
+echo '<tbody>';
+
 foreach ($categories as $cat) {
     $is_selected = ($all_selected || in_array($cat->id, $categoryids));
-    $tag_class = $is_selected ? 'category-tag active' : 'category-tag';
-    echo '<div class="' . $tag_class . '" data-catid="' . $cat->id . '" style="padding: 8px 16px; border-radius: 20px; cursor: pointer; user-select: none; transition: all 0.2s; font-weight: 500;">';
-    echo format_string($cat->name);
-    echo '</div>';
+    $is_final_exam = ($finalexamcategoryid > 0 && $cat->id == $finalexamcategoryid);
+    
+    echo '<tr>';
+    echo '<td style="padding: 10px;">' . format_string($cat->name) . '</td>';
+    echo '<td style="padding: 10px; text-align: center;">';
+    echo '<input type="checkbox" class="category-checkbox" name="categoryids[]" value="' . $cat->id . '" ' . ($is_selected ? 'checked' : '') . '>';
+    echo '</td>';
+    echo '<td style="padding: 10px; text-align: center;">';
+    echo '<input type="radio" class="final-exam-radio" name="finalexamcategoryid" value="' . $cat->id . '" ' . ($is_final_exam ? 'checked' : '') . ' ' . ($generatefinalexam ? 'disabled' : '') . '>';
+    echo '</td>';
+    echo '</tr>';
 }
-echo '</div>';
+
+echo '</tbody>';
+echo '</table>';
+
 echo '<div style="display: flex; gap: 10px;">';
 echo '<button type="button" id="selectAllBtn" class="btn btn-outline-secondary">Seleccionar todas las unidades</button>';
 echo '<button type="submit" class="btn btn-outline-primary">Aplicar filtro</button>';
@@ -277,7 +316,7 @@ echo '</div>';
 
 // Quiz information section
 if (!empty($quizzes)) {
-    echo '<div class="quiz-info-section" id="quizInfoSection" style="display: none; margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd;">';
+    echo '<div class="quiz-info-section" id="quizInfoSection" style="display: block; margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd;">';
     echo '<h4 style="margin-top: 0; color: #0f6cbf;">' . get_string('quizinformation', 'report_questionbank') . '</h4>';
     echo '<table class="generaltable" style="width: 100%; background-color: white;">';
     echo '<thead>';
@@ -306,23 +345,9 @@ if (!empty($quizzes)) {
 }
 
 echo '<style>';
-echo '.category-tag {';
-echo '    background-color: #e0e0e0;';
-echo '    color: #666;';
-echo '    border: 2px solid #e0e0e0;';
-echo '}';
-echo '.category-tag:hover {';
-echo '    background-color: #d0d0d0;';
-echo '    border-color: #d0d0d0;';
-echo '}';
-echo '.category-tag.active {';
-echo '    background-color: #0f6cbf;';
-echo '    color: white;';
-echo '    border-color: #0f6cbf;';
-echo '}';
-echo '.category-tag.active:hover {';
-echo '    background-color: #0a5291;';
-echo '    border-color: #0a5291;';
+echo '.final-exam-checkbox:disabled {';
+echo '    opacity: 0.5;';
+echo '    cursor: not-allowed;';
 echo '}';
 echo '</style>';
 
@@ -332,11 +357,16 @@ if (!empty($questions)) {
     foreach ($categoryids as $catid) {
         $categoryparams .= '&categoryids[]=' . $catid;
     }
+    if ($finalexamcategoryid > 0) {
+        $categoryparams .= '&finalexamcategoryid=' . $finalexamcategoryid;
+    }
+    $categoryparams .= '&generatefinalexam=' . $generatefinalexam;
+    
     echo '<div class="download-button-container">';
     echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
     echo '</a>';
-    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=excel" class="btn btn-secondary" id="excelButton" style="display: none;">';
+    echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=excel" class="btn btn-secondary" id="excelButton" style="display: none !important;">';
     echo get_string('downloadexcel', 'report_questionbank');
     echo '</a>';
     echo '</div>';
@@ -388,42 +418,24 @@ if (empty($questions)) {
 
 echo '<script type="text/javascript">';
 echo '(function() {';
-echo '    var tags = document.querySelectorAll(".category-tag");';
+echo '    var categoryCheckboxes = document.querySelectorAll(".category-checkbox");';
 echo '    var selectAllBtn = document.getElementById("selectAllBtn");';
 echo '    var form = document.getElementById("categoryFilterForm");';
+echo '    var generateFinalExamToggle = document.getElementById("generateFinalExamToggle");';
+echo '    var generateFinalExamHidden = document.getElementById("generateFinalExamHidden");';
 echo '    ';
-echo '    if (selectAllBtn && tags.length > 0) {';
-echo '        tags.forEach(function(tag) {';
-echo '            tag.addEventListener("click", function() {';
-echo '                tag.classList.toggle("active");';
-echo '            });';
-echo '        });';
-echo '        ';
+echo '    if (selectAllBtn && categoryCheckboxes.length > 0) {';
 echo '        selectAllBtn.addEventListener("click", function() {';
-echo '            var allActive = Array.from(tags).every(function(t) { return t.classList.contains("active"); });';
-echo '            tags.forEach(function(tag) {';
-echo '                if (allActive) {';
-echo '                    tag.classList.remove("active");';
-echo '                } else {';
-echo '                    tag.classList.add("active");';
-echo '                }';
+echo '            var allChecked = Array.from(categoryCheckboxes).every(function(cb) { return cb.checked; });';
+echo '            categoryCheckboxes.forEach(function(cb) {';
+echo '                cb.checked = !allChecked;';
 echo '            });';
 echo '        });';
 echo '    }';
 echo '    ';
-echo '    if (form) {';
-echo '        form.addEventListener("submit", function(e) {';
-echo '            var activeTags = Array.from(tags).filter(function(t) {';
-echo '                return t.classList.contains("active");';
-echo '            });';
-echo '            ';
-echo '            activeTags.forEach(function(tag) {';
-echo '                var input = document.createElement("input");';
-echo '                input.type = "hidden";';
-echo '                input.name = "categoryids[]";';
-echo '                input.value = tag.getAttribute("data-catid");';
-echo '                form.appendChild(input);';
-echo '            });';
+echo '    if (generateFinalExamToggle && generateFinalExamHidden) {';
+echo '        generateFinalExamToggle.addEventListener("change", function() {';
+echo '            generateFinalExamHidden.value = this.checked ? "1" : "0";';
 echo '        });';
 echo '    }';
 echo '})();';

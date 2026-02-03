@@ -38,8 +38,10 @@ class pdf_export extends \pdf {
      *
      * @param array $questions Array of question objects
      * @param string $coursename Name of the course for filename
+     * @param bool $generatefinalexam Whether to generate the final exam section from all units
+     * @param int $finalexamcategoryid Category ID to use as final exam unit (when generatefinalexam is false)
      */
-    public function export_questions($questions, $coursename) {
+    public function export_questions($questions, $coursename, $generatefinalexam = true, $finalexamcategoryid = 0) {
         global $DB;
         
         // Clean the course name for use in filename.
@@ -71,39 +73,55 @@ class pdf_export extends \pdf {
         $this->Ln(10);
         $this->Cell(0, 15, $this->clean_text($coursename), 0, 1, 'C');
         
-        // 2. EXAMEN FINAL cover page
-        $this->AddPage();
-        $this->SetFont('helvetica', 'B', 20);
-        $this->Ln(80);
-        $this->Cell(0, 15, 'EXAMEN FINAL', 0, 1, 'C');
-        
-        // 2b. EXAMEN FINAL content page
-        $this->AddPage();
-        
-        // Description text
-        $this->SetFont('helvetica', '', 11);
-        $description = 'Las preguntas del curso se estructuran en bancos de preguntas que contienen un número superior al de ítems incluidos en cada test. Esta organización tiene como objetivo que, en caso de que el alumnado rehaga el cuestionario, se le presenten preguntas diferentes en cada intento. Asimismo, de estos mismos bancos de preguntas se extraen los ítems que conforman el test final del curso.';
-        $this->MultiCell(0, 5, $description, 0, 'L');
-        $this->Ln(10);
-        
-        // Random sample of 5-10 questions
-        $sample_count = min(max(5, min(10, count($questions))), count($questions));
-        $sample_questions = $this->get_random_questions($questions, $sample_count);
-        
-        // Sample header with same style as unit headers (flush with question background, padded, multi-line)
-        $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
-        $this->SetX($this->lMargin);
-        $this->SetFont('helvetica', 'B', 14);
-        $this->SetFillColor(15, 108, 191);
-        $this->SetTextColor(255, 255, 255);
-        $this->setCellPaddings(8, 4, 8, 4);
-        $this->MultiCell($headerwidth, 0, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
-        $this->setCellPaddings(0, 0, 0, 0);
-        $this->SetTextColor(0, 0, 0);
-        $this->Ln(10);
-        
-        foreach ($sample_questions as $question) {
-            $this->display_question($question, $DB);
+        // 2. EXAMEN FINAL cover page and content - only if generatefinalexam is true
+        if ($generatefinalexam) {
+            $this->AddPage();
+            $this->SetFont('helvetica', 'B', 20);
+            $this->Ln(80);
+            $this->Cell(0, 15, 'EXAMEN FINAL', 0, 1, 'C');
+            
+            // 2b. EXAMEN FINAL content page
+            $this->AddPage();
+            
+            // Description text
+            $this->SetFont('helvetica', '', 11);
+            $description = 'Las preguntas del curso se estructuran en bancos de preguntas que contienen un número superior al de ítems incluidos en cada test. Esta organización tiene como objetivo que, en caso de que el alumnado rehaga el cuestionario, se le presenten preguntas diferentes en cada intento. Asimismo, de estos mismos bancos de preguntas se extraen los ítems que conforman el test final del curso.';
+            $this->MultiCell(0, 5, $description, 0, 'L');
+            $this->Ln(10);
+            
+            // Determine which questions to sample for final exam
+            $sample_questions_pool = array();
+            if ($finalexamcategoryid > 0) {
+                // Use only questions from the selected final exam category
+                foreach ($questions as $question) {
+                    if ($question->questioncategoryid == $finalexamcategoryid) {
+                        $sample_questions_pool[] = $question;
+                    }
+                }
+            } else {
+                // Use all questions if no specific category selected
+                $sample_questions_pool = $questions;
+            }
+            
+            // Random sample of 5-10 questions
+            $sample_count = min(max(5, min(10, count($sample_questions_pool))), count($sample_questions_pool));
+            $sample_questions = $this->get_random_questions($sample_questions_pool, $sample_count);
+            
+            // Sample header with same style as unit headers (flush with question background, padded, multi-line)
+            $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $this->SetX($this->lMargin);
+            $this->SetFont('helvetica', 'B', 14);
+            $this->SetFillColor(15, 108, 191);
+            $this->SetTextColor(255, 255, 255);
+            $this->setCellPaddings(8, 4, 8, 4);
+            $this->MultiCell($headerwidth, 0, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
+            $this->setCellPaddings(0, 0, 0, 0);
+            $this->SetTextColor(0, 0, 0);
+            $this->Ln(10);
+            
+            foreach ($sample_questions as $question) {
+                $this->display_question($question, $DB);
+            }
         }
         
         // 3. EVALUACIÓN PARCIAL cover page
