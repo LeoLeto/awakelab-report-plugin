@@ -25,12 +25,10 @@
 $string['pluginname'] = 'Question Bank Report';
 $string['questionbank:view'] = 'View question bank report';
 $string['title'] = 'Question Bank Report';
-$string['questionname'] = 'Question Name';
 $string['questiontext'] = 'Question Text';
 $string['questiontype'] = 'Question Type';
 $string['category'] = 'Category';
 $string['answers'] = 'Answers';
-$string['correctanswer'] = 'Correct Answer';
 $string['downloadexcel'] = 'Download as Excel';
 $string['downloadpdf'] = 'Download as PDF';
 $string['noquestions'] = 'No questions found in this course.';

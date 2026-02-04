@@ -25,12 +25,10 @@
 $string['pluginname'] = 'Informe del Banco de Preguntas';
 $string['questionbank:view'] = 'Ver informe del banco de preguntas';
 $string['title'] = 'Informe del Banco de Preguntas';
-$string['questionname'] = 'Nombre de la Pregunta';
 $string['questiontext'] = 'Texto de la Pregunta';
 $string['questiontype'] = 'Tipo de Pregunta';
 $string['category'] = 'Unidad';
 $string['answers'] = 'Respuestas';
-$string['correctanswer'] = 'Respuesta Correcta';
 $string['downloadexcel'] = 'Descargar como Excel';
 $string['downloadpdf'] = 'Descargar como PDF';
 $string['noquestions'] = 'No se encontraron preguntas en este curso.';

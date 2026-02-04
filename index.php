@@ -346,13 +346,6 @@ echo '</div>';
 echo '</form>';
 echo '</div>';
 
-echo '<style>';
-echo '.final-exam-checkbox:disabled {';
-echo '    opacity: 0.5;';
-echo '    cursor: not-allowed;';
-echo '}';
-echo '</style>';
-
 // Download button.
 if (!empty($questions)) {
     $categoryparams = '';
