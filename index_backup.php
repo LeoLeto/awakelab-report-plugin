@@ -232,56 +232,65 @@ echo 'Versión: ' . $plugin->release;
 echo '</div>';
 
 echo '<script type="text/javascript">';
-echo 'document.addEventListener("DOMContentLoaded", function() {';
-echo '    console.log("DOM Ready");';
+echo 'function updateIncludeCheckboxes() {';
+echo '    var checkboxes = document.querySelectorAll(".category-checkbox");';
 echo '    ';
+echo '    checkboxes.forEach(function(checkbox) {';
+echo '        var tr = checkbox.closest("tr");';
+echo '        if (!tr) return;';
+echo '        var rowRadio = tr.querySelector(".final-exam-radio");';
+echo '        var shouldDisable = rowRadio && rowRadio.checked;';
+echo '        ';
+echo '        if (shouldDisable) {';
+echo '            checkbox.disabled = true;';
+echo '            checkbox.checked = false;';
+echo '            checkbox.style.opacity = "0.5";';
+echo '            checkbox.style.cursor = "not-allowed";';
+echo '            checkbox.style.pointerEvents = "none";';
+echo '        } else {';
+echo '            checkbox.disabled = false;';
+echo '            checkbox.style.opacity = "1";';
+echo '            checkbox.style.cursor = "auto";';
+echo '            checkbox.style.pointerEvents = "auto";';
+echo '        }';
+echo '    });';
+echo '}';
+echo '';
+echo '// Radio-button behavior for final exam selection';
+echo 'document.addEventListener("DOMContentLoaded", function() {';
 echo '    var finalExamRadios = document.querySelectorAll(".final-exam-radio");';
 echo '    var categoryCheckboxes = document.querySelectorAll(".category-checkbox");';
-echo '    var form = document.getElementById("categoryFilterForm");';
-echo '    var selectAllBtn = document.getElementById("selectAllBtn");';
-echo '    ';
-echo '    function updateIncludeCheckboxes() {';
-echo '        categoryCheckboxes.forEach(function(checkbox) {';
-echo '            var tr = checkbox.closest("tr");';
-echo '            if (!tr) return;';
-echo '            var rowRadio = tr.querySelector(".final-exam-radio");';
-echo '            var shouldDisable = rowRadio && rowRadio.checked;';
-echo '            if (shouldDisable) {';
-echo '                checkbox.disabled = true;';
-echo '                checkbox.checked = true;';
-echo '                checkbox.style.opacity = "0.5";';
-echo '                checkbox.style.cursor = "not-allowed";';
-echo '            } else {';
-echo '                checkbox.disabled = false;';
-echo '                checkbox.style.opacity = "1";';
-echo '                checkbox.style.cursor = "pointer";';
-echo '            }';
-echo '        });';
-echo '    }';
 echo '    ';
 echo '    finalExamRadios.forEach(function(radio) {';
 echo '        radio.addEventListener("change", function() {';
+echo '            if (this.checked) {';
+echo '                finalExamRadios.forEach(function(r) {';
+echo '                    if (r !== radio) {';
+echo '                        r.checked = false;';
+echo '                    }';
+echo '                });';
+echo '            }';
 echo '            updateIncludeCheckboxes();';
-echo '            setTimeout(function() { form.submit(); }, 100);';
 echo '        });';
 echo '    });';
 echo '    ';
+echo '    // Prevent changes to disabled checkboxes';
 echo '    categoryCheckboxes.forEach(function(checkbox) {';
-echo '        checkbox.addEventListener("change", function() {';
-echo '            if (!this.disabled) {';
-echo '                setTimeout(function() { form.submit(); }, 100);';
+echo '        checkbox.addEventListener("click", function(e) {';
+echo '            if (this.disabled) {';
+echo '                e.preventDefault();';
+echo '                e.stopPropagation();';
+echo '                return false;';
+echo '            }';
+echo '        });';
+echo '        checkbox.addEventListener("change", function(e) {';
+echo '            if (this.disabled) {';
+echo '                e.preventDefault();';
+echo '                this.checked = false;';
+echo '                return false;';
 echo '            }';
 echo '        });';
 echo '    });';
-echo '    ';
-echo '    if (selectAllBtn) {';
-echo '        selectAllBtn.addEventListener("click", function() {';
-echo '            categoryCheckboxes.forEach(function(cb) {';
-echo '                if (!cb.disabled) cb.checked = true;';
-echo '            });';
-echo '            setTimeout(function() { form.submit(); }, 100);';
-echo '        });';
-echo '    }';
 echo '    ';
 echo '    updateIncludeCheckboxes();';
 echo '});';
@@ -308,23 +317,14 @@ echo '</tr>';
 echo '</thead>';
 echo '<tbody>';
 
-// Add "Ninguno" (None) option for final exam radio buttons
-echo '<tr>';
-echo '<td style="padding: 10px;"><em>Ninguno</em></td>';
-echo '<td style="padding: 10px; text-align: center;">-</td>';
-echo '<td style="padding: 10px; text-align: center;">';
-echo '<input type="radio" class="final-exam-radio" name="finalexamcategoryid" value="0" ' . ($finalexamcategoryid == 0 ? 'checked' : '') . '>';
-echo '</td>';
-echo '</tr>';
-
 foreach ($categories as $cat) {
     $is_selected = ($all_selected || in_array($cat->id, $categoryids));
     $is_final_exam = ($finalexamcategoryid > 0 && $cat->id == $finalexamcategoryid);
-
-    // If this row is selected as final exam, check and disable the include checkbox
-    $checkbox_checked = $is_selected || $is_final_exam;
+    
+    // If this row is selected as final exam, don't check and disable the include checkbox
+    $checkbox_checked = $is_selected && !$is_final_exam;
     $checkbox_disabled = $is_final_exam ? 'disabled' : '';
-
+    
     echo '<tr>';
     echo '<td style="padding: 10px;">' . format_string($cat->name) . '</td>';
     echo '<td style="padding: 10px; text-align: center;">';
@@ -341,28 +341,85 @@ echo '</table>';
 
 echo '<div style="display: flex; gap: 10px;">';
 echo '<button type="button" id="selectAllBtn" class="btn btn-outline-secondary">Seleccionar todas las unidades</button>';
+echo '<button type="submit" class="btn btn-outline-primary" style="display: none;">Aplicar filtro</button>';
 echo '</div>';
 echo '</div>';
 echo '</form>';
 echo '</div>';
+
+echo '<script type="text/javascript">';
+echo 'document.addEventListener("DOMContentLoaded", function() {';
+echo '    var form = document.getElementById("categoryFilterForm");';
+echo '    var categoryCheckboxes = document.querySelectorAll(".category-checkbox");';
+echo '    var finalExamRadios = document.querySelectorAll(".final-exam-radio");';
+echo '    ';
+echo '    function autoSubmitForm() {';
+echo '        if (form) {';
+echo '            form.submit();';
+echo '        }';
+echo '    }';
+echo '    ';
+echo '    categoryCheckboxes.forEach(function(checkbox) {';
+echo '        checkbox.addEventListener("change", autoSubmitForm);';
+echo '    });';
+echo '    ';
+echo '    finalExamRadios.forEach(function(radio) {';
+echo '        radio.addEventListener("change", autoSubmitForm);';
+echo '    });';
+echo '    ';
+echo '    // Before form submission, ensure final exam unit is included in categoryids';
+echo '    if (form) {';
+echo '        form.addEventListener("submit", function(e) {';
+echo '            var selectedFinalExam = Array.from(finalExamRadios).find(function(r) { return r.checked; });';
+echo '            if (selectedFinalExam) {';
+echo '                var finalExamValue = selectedFinalExam.value;';
+echo '                var finalExamHidden = form.querySelector("input[name=\"finalexamcategoryid\"]");';
+echo '                if (!finalExamHidden) {';
+echo '                    finalExamHidden = document.createElement("input");';
+echo '                    finalExamHidden.type = "hidden";';
+echo '                    finalExamHidden.name = "finalexamcategoryid";';
+echo '                    form.appendChild(finalExamHidden);';
+echo '                }';
+echo '                finalExamHidden.value = finalExamValue;';
+echo '                var isFinalExamIncluded = Array.from(categoryCheckboxes).some(function(cb) { return cb.value == finalExamValue && cb.checked; });';
+echo '                if (!isFinalExamIncluded) {';
+echo '                    var hiddenCheckbox = document.createElement("input");';
+echo '                    hiddenCheckbox.type = "hidden";';
+echo '                    hiddenCheckbox.name = "categoryids[]";';
+echo '                    hiddenCheckbox.value = finalExamValue;';
+echo '                    form.appendChild(hiddenCheckbox);';
+echo '                }';
+echo '            }';
+echo '        });';
+echo '    }';
+echo '});';
+echo '</script>';
 
 echo '<style>';
 echo '.final-exam-checkbox:disabled {';
 echo '    opacity: 0.5;';
 echo '    cursor: not-allowed;';
 echo '}';
+echo '.category-checkbox:disabled {';
+echo '    pointer-events: none;';
+echo '    opacity: 0.5;';
+echo '    cursor: not-allowed;';
+echo '}';
 echo '</style>';
 
-// Download button.
+// Build download button parameters for use in multiple places
+$categoryparams = '';
 if (!empty($questions)) {
-    $categoryparams = '';
     foreach ($categoryids as $catid) {
         $categoryparams .= '&categoryids[]=' . $catid;
     }
     if ($finalexamcategoryid > 0) {
         $categoryparams .= '&finalexamcategoryid=' . $finalexamcategoryid;
     }
-    
+}
+
+// Download button - placed before quiz info
+if (!empty($questions)) {
     echo '<div class="download-button-container">';
     echo '<a href="index.php?id=' . $courseid . $categoryparams . '&download=pdf" class="btn btn-primary" style="margin-right: 10px;">';
     echo get_string('downloadpdf', 'report_questionbank');
@@ -407,6 +464,7 @@ if (!empty($quizzes)) {
 if (empty($questions)) {
     echo '<p>' . get_string('noquestions', 'report_questionbank') . '</p>';
 } else {
+    echo '<h3 style="margin-top: 30px; margin-bottom: 15px; color: #0f6cbf;">Vista previa de las preguntas a incluir</h3>';
     echo '<div class="question-bank-table-container">';
     echo '<table class="generaltable question-bank-table">';
     echo '<thead>';
@@ -446,5 +504,22 @@ if (empty($questions)) {
     echo '</table>';
     echo '</div>';
 }
+
+echo '<script type="text/javascript">';
+echo '(function() {';
+echo '    var categoryCheckboxes = document.querySelectorAll(".category-checkbox");';
+echo '    var selectAllBtn = document.getElementById("selectAllBtn");';
+echo '    var form = document.getElementById("categoryFilterForm");';
+echo '    if (selectAllBtn && categoryCheckboxes.length > 0) {';
+echo '        selectAllBtn.addEventListener("click", function() {';
+echo '            var allChecked = Array.from(categoryCheckboxes).every(function(cb) { return cb.checked; });';
+echo '            categoryCheckboxes.forEach(function(cb) {';
+echo '                cb.checked = !allChecked;';
+echo '            });';
+echo '        });';
+echo '    }';
+echo '    ';
+echo '})();';
+echo '</script>';
 
 echo $OUTPUT->footer();
