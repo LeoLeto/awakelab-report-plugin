@@ -32,7 +32,33 @@ defined('MOODLE_INTERNAL') || die();
  * @param context $context The course context
  */
 function report_questionbank_extend_navigation_course($navigation, $course, $context) {
-    if (has_capability('report/questionbank:view', $context)) {
+    global $USER;
+    
+    // Check if user has any teacher-level roles
+    $userroles = get_user_roles($context, $USER->id);
+    $hasteacherrole = false;
+    $hasstudentonly = true;
+    
+    foreach ($userroles as $role) {
+        if (in_array($role->shortname, array('teacher', 'editingteacher', 'manager'))) {
+            $hasteacherrole = true;
+            $hasstudentonly = false;
+            break;
+        }
+        if ($role->shortname !== 'student') {
+            $hasstudentonly = false;
+        }
+    }
+    
+    // Hide from pure students (those without any teacher-level roles)
+    if ($hasstudentonly && !$hasteacherrole) {
+        return;
+    }
+    
+    // Check capability and ensure user has teacher-level access
+    if (has_capability('report/questionbank:view', $context) &&
+        (has_capability('moodle/course:viewhiddenactivities', $context) || 
+         has_capability('moodle/course:update', $context))) {
         $url = new moodle_url('/report/questionbank/index.php', array('id' => $course->id));
         $navigation->add(
             get_string('pluginname', 'report_questionbank'),

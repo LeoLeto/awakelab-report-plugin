@@ -47,6 +47,27 @@ require_login($course);
 $context = context_course::instance($courseid);
 require_capability('report/questionbank:view', $context);
 
+// Additional security: Block pure students (those without any teacher-level roles).
+// This prevents students from accessing sensitive answer data even if role overrides exist.
+$userroles = get_user_roles($context, $USER->id);
+$hasteacherrole = false;
+
+foreach ($userroles as $role) {
+    if (in_array($role->shortname, array('teacher', 'editingteacher', 'manager'))) {
+        $hasteacherrole = true;
+        break;
+    }
+}
+
+// If user doesn't have any teacher-level role, block access
+if (!$hasteacherrole) {
+    // Double-check with capabilities
+    if (!has_capability('moodle/course:viewhiddenactivities', $context) && 
+        !has_capability('moodle/course:update', $context)) {
+        print_error('nopermissions', 'error', $CFG->wwwroot . '/course/view.php?id=' . $courseid);
+    }
+}
+
 // Set up the page.
 $PAGE->set_url('/report/questionbank/index.php', array('id' => $courseid));
 $PAGE->set_context($context);
