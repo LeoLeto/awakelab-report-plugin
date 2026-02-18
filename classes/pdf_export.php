@@ -70,7 +70,7 @@ class pdf_export extends \pdf {
         $this->Cell(0, 20, 'Informe del Banco de Preguntas', 0, 1, 'C');
         $this->SetFont('helvetica', '', 18);
         $this->Ln(10);
-        $this->Cell(0, 15, $this->clean_text($coursename), 0, 1, 'C');
+        $this->MultiCell(0, 15, $this->clean_text($coursename), 0, 'C', 0, 1);
         
         // 2. EXAMEN FINAL cover page and content - always generate, source depends on selection
         $this->AddPage();

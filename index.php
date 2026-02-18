@@ -85,7 +85,7 @@ $categories = $DB->get_records_sql(
      FROM {question_categories} qc
      WHERE qc.contextid = :contextid
      AND qc.parent != 0
-     ORDER BY qc.name",
+     ORDER BY qc.sortorder",
     array('contextid' => $context->id)
 );
 
@@ -106,21 +106,23 @@ if (!empty($categoryids)) {
     $params = array_merge($params, $inparams);
 }
 
-$sql .= " ORDER BY qc.name, q.name";
+$sql .= " ORDER BY qc.sortorder, q.name";
 
 $questions = $DB->get_records_sql($sql, $params);
 
 // Get quizzes and their random question counts for this course
-$quizzes_sql = "SELECT q.id, q.name, 
+$quizzes_sql = "SELECT q.id, q.name, cm.section, cm.id as cmid,
                 COUNT(DISTINCT qrs.id) as random_count
                 FROM {quiz} q
+                JOIN {course_modules} cm ON cm.instance = q.id AND cm.course = q.course
+                JOIN {modules} m ON m.id = cm.module AND m.name = 'quiz'
                 LEFT JOIN {quiz_slots} qs ON qs.quizid = q.id
                 LEFT JOIN {question_set_references} qsr ON qsr.itemid = qs.id AND qsr.component = 'mod_quiz' AND qsr.questionarea = 'slot'
                 LEFT JOIN {question_references} qr ON qr.itemid = qs.id AND qr.component = 'mod_quiz' AND qr.questionarea = 'slot'
                 LEFT JOIN {question_set_references} qrs ON qrs.itemid = qs.id AND qrs.component = 'mod_quiz' AND qrs.questionarea = 'slot'
                 WHERE q.course = :courseid
-                GROUP BY q.id, q.name
-                ORDER BY q.name";
+                GROUP BY q.id, q.name, cm.section, cm.id
+                ORDER BY cm.section, cm.id";
 $quizzes = $DB->get_records_sql($quizzes_sql, array('courseid' => $courseid));
 
 // Handle Excel download.
@@ -135,7 +137,7 @@ if ($download === 'excel') {
 if ($download === 'pdf') {
     require_once($CFG->dirroot . '/report/questionbank/classes/pdf_export.php');
     $exporter = new \report_questionbank\pdf_export();
-    $exporter->export_questions($questions, $course->shortname, $finalexamcategoryid);
+    $exporter->export_questions($questions, $course->fullname, $finalexamcategoryid);
     exit;
 }
 
