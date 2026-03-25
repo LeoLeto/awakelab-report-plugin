@@ -127,6 +127,92 @@ class excel_export {
     }
     
     /**
+     * Export quiz-based questions to Excel file.
+     *
+     * @param array $quiz_questions_grouped Associative array of quiz name => question objects
+     * @param string $coursename Name of the course for filename
+     */
+    public function export_quiz_questions($quiz_questions_grouped, $coursename) {
+        global $DB;
+
+        $filename = clean_filename('quiz_questions_' . $coursename . '_' . date('Y-m-d')) . '.xlsx';
+
+        $workbook = new \MoodleExcelWorkbook($filename);
+
+        foreach ($quiz_questions_grouped as $quizname => $quiz_qs) {
+            // Truncate sheet name to 31 chars (Excel limit).
+            $sheetname = $this->clean_text($quizname);
+            if (strlen($sheetname) > 31) {
+                $sheetname = substr($sheetname, 0, 28) . '...';
+            }
+
+            $worksheet = $workbook->add_worksheet($sheetname);
+
+            $formatheader = $workbook->add_format();
+            $formatheader->set_bold(1);
+            $formatheader->set_size(12);
+            $formatheader->set_color('white');
+            $formatheader->set_bg_color('#0f6cbf');
+            $formatheader->set_align('left');
+            $formatheader->set_align('vcenter');
+
+            $formattext = $workbook->add_format();
+            $formattext->set_text_wrap(1);
+            $formattext->set_align('left');
+            $formattext->set_align('top');
+
+            $worksheet->set_column(0, 0, 8);
+            $worksheet->set_column(1, 1, 30);
+            $worksheet->set_column(2, 2, 40);
+            $worksheet->set_column(3, 3, 15);
+            $worksheet->set_column(4, 4, 20);
+            $worksheet->set_column(5, 5, 50);
+            $worksheet->set_column(6, 6, 12);
+            $worksheet->set_column(7, 7, 10);
+
+            $row = 0;
+            $worksheet->write($row, 0, 'ID', $formatheader);
+            $worksheet->write($row, 1, get_string('questionname', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 2, get_string('questiontext', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 3, get_string('questiontype', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 4, get_string('category', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 5, get_string('answers', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 6, get_string('correctanswer', 'report_questionbank'), $formatheader);
+            $worksheet->write($row, 7, 'Puntaje', $formatheader);
+            $row++;
+
+            foreach ($quiz_qs as $question) {
+                $answers = $DB->get_records('question_answers', array('question' => $question->id));
+                if (!empty($answers)) {
+                    foreach ($answers as $answer) {
+                        $worksheet->write($row, 0, $question->id, $formattext);
+                        $worksheet->write($row, 1, $this->clean_text($question->name), $formattext);
+                        $worksheet->write($row, 2, $this->clean_text($question->questiontext), $formattext);
+                        $worksheet->write($row, 3, $question->qtype, $formattext);
+                        $worksheet->write($row, 4, $this->clean_text($question->categoryname), $formattext);
+                        $worksheet->write($row, 5, $this->clean_text($answer->answer), $formattext);
+                        $worksheet->write($row, 6, ($answer->fraction > 0) ? get_string('yes') : get_string('no'), $formattext);
+                        $worksheet->write($row, 7, $answer->fraction, $formattext);
+                        $row++;
+                    }
+                } else {
+                    $worksheet->write($row, 0, $question->id, $formattext);
+                    $worksheet->write($row, 1, $this->clean_text($question->name), $formattext);
+                    $worksheet->write($row, 2, $this->clean_text($question->questiontext), $formattext);
+                    $worksheet->write($row, 3, $question->qtype, $formattext);
+                    $worksheet->write($row, 4, $this->clean_text($question->categoryname), $formattext);
+                    $worksheet->write($row, 5, '', $formattext);
+                    $worksheet->write($row, 6, '', $formattext);
+                    $worksheet->write($row, 7, '', $formattext);
+                    $row++;
+                }
+            }
+        }
+
+        $workbook->close();
+    }
+
+    /**
      * Clean text for Excel export (remove HTML tags and extra whitespace).
      *
      * @param string $text Text to clean

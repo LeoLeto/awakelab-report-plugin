@@ -38,9 +38,10 @@ class pdf_export extends \pdf {
      *
      * @param array $questions Array of question objects
      * @param string $coursename Name of the course for filename
-    * @param int $finalexamcategoryid Category ID to use as final exam unit
+     * @param int $finalexamcategoryid Category ID to use as final exam unit
+     * @param array $categoryorder Optional array of category IDs specifying display order
      */
-    public function export_questions($questions, $coursename, $finalexamcategoryid = 0) {
+    public function export_questions($questions, $coursename, $finalexamcategoryid = 0, $categoryorder = array()) {
         global $DB;
         
         // Clean the course name for use in filename.
@@ -142,16 +143,38 @@ class pdf_export extends \pdf {
         // 4. Questions grouped by unit
         // Group questions by category
         $grouped_questions = array();
+        $category_id_to_name = array();
         foreach ($questions as $question) {
             // Skip the selected final exam category - it should not appear in units section
             if ($finalexamcategoryid > 0 && $question->questioncategoryid == $finalexamcategoryid) {
                 continue;
             }
             $category = $question->categoryname;
+            $category_id_to_name[$question->questioncategoryid] = $category;
             if (!isset($grouped_questions[$category])) {
                 $grouped_questions[$category] = array();
             }
             $grouped_questions[$category][] = $question;
+        }
+
+        // Apply custom category order if provided.
+        if (!empty($categoryorder)) {
+            $ordered_grouped = array();
+            foreach ($categoryorder as $catid) {
+                if (isset($category_id_to_name[$catid])) {
+                    $catname = $category_id_to_name[$catid];
+                    if (isset($grouped_questions[$catname]) && !isset($ordered_grouped[$catname])) {
+                        $ordered_grouped[$catname] = $grouped_questions[$catname];
+                    }
+                }
+            }
+            // Add remaining categories not in the order.
+            foreach ($grouped_questions as $catname => $qs) {
+                if (!isset($ordered_grouped[$catname])) {
+                    $ordered_grouped[$catname] = $qs;
+                }
+            }
+            $grouped_questions = $ordered_grouped;
         }
         
         // Display each unit with max 5 questions
@@ -183,6 +206,70 @@ class pdf_export extends \pdf {
         $this->Output($filename, 'D');
     }
     
+    /**
+     * Export quiz-based questions to PDF file.
+     *
+     * @param array $quiz_questions_grouped Associative array of quiz name => question objects
+     * @param string $coursename Name of the course for filename
+     */
+    public function export_quiz_questions($quiz_questions_grouped, $coursename) {
+        global $DB;
+
+        $filename = clean_filename('quiz_questions_' . $coursename . '_' . date('Y-m-d')) . '.pdf';
+
+        $this->SetCreator('Moodle Question Bank Report');
+        $this->SetAuthor('Moodle');
+        $this->SetTitle('Informe de Cuestionarios - ' . $coursename);
+        $this->SetSubject('Informe de Cuestionarios');
+        $this->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        $this->SetMargins(30, 30, 30);
+        $this->SetHeaderMargin(5);
+        $this->SetFooterMargin(18);
+        $this->SetAutoPageBreak(true, 30);
+
+        // Cover page.
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 32);
+        $this->Ln(80);
+        $this->Cell(0, 20, 'Informe de Cuestionarios', 0, 1, 'C');
+        $this->SetFont('helvetica', '', 18);
+        $this->Ln(10);
+        $this->MultiCell(0, 15, $this->clean_text($coursename), 0, 'C', 0, 1);
+
+        // Each quiz as a section.
+        $quiz_number = 1;
+        foreach ($quiz_questions_grouped as $quizname => $quiz_qs) {
+            $this->AddPage();
+
+            // Quiz header.
+            $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $this->SetX($this->lMargin);
+            $this->SetFont('helvetica', 'B', 14);
+            $this->SetFillColor(15, 108, 191);
+            $this->SetTextColor(255, 255, 255);
+            $this->setCellPaddings(8, 4, 8, 4);
+            $this->MultiCell($headerwidth, 0, 'Cuestionario ' . $quiz_number . ': ' . $this->clean_text($quizname), 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
+            $this->setCellPaddings(0, 0, 0, 0);
+            $this->SetTextColor(0, 0, 0);
+            $this->Ln(10);
+            $quiz_number++;
+
+            if (empty($quiz_qs)) {
+                $this->SetFont('helvetica', '', 11);
+                $this->MultiCell(0, 5, 'No hay preguntas disponibles en este cuestionario.', 0, 'L');
+                continue;
+            }
+
+            // Display max 5 sample questions from this quiz.
+            $questions_count = min(5, count($quiz_qs));
+            for ($i = 0; $i < $questions_count; $i++) {
+                $this->display_question($quiz_qs[$i], $DB);
+            }
+        }
+
+        $this->Output($filename, 'D');
+    }
+
     /**
      * Display a single question with its answers.
      *
