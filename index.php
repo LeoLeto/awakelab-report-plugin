@@ -36,6 +36,7 @@ $finalexamcategoryid = optional_param('finalexamcategoryid', 0, PARAM_INT);
 $mode = optional_param('mode', 'questionbank', PARAM_ALPHA);
 $quizids = optional_param_array('quizids', array(), PARAM_INT);
 $categoryorder = optional_param_array('categoryorder', array(), PARAM_INT);
+$finalexamquizid = optional_param('finalexamquizid', 0, PARAM_INT);
 
 // Validate mode parameter.
 if (!in_array($mode, array('questionbank', 'quiz'))) {
@@ -45,6 +46,11 @@ if (!in_array($mode, array('questionbank', 'quiz'))) {
 // If a unit is selected as final exam, ensure it's included in the categories
 if ($finalexamcategoryid > 0 && !in_array($finalexamcategoryid, $categoryids)) {
     $categoryids[] = $finalexamcategoryid;
+}
+
+// If a quiz is selected as final exam, ensure it's included in the quizids
+if ($finalexamquizid > 0 && !in_array($finalexamquizid, $quizids)) {
+    $quizids[] = $finalexamquizid;
 }
 
 // Get the course and ensure user is logged in.
@@ -125,6 +131,7 @@ $quizzes = $DB->get_records_sql($quizzes_sql, array('courseid' => $courseid));
 // Fetch questions based on mode.
 $questions = array();
 $quiz_questions_grouped = array();
+$quiz_id_to_name = array();
 
 if ($mode === 'quiz') {
     // Quiz mode: fetch questions from quiz slots.
@@ -196,7 +203,8 @@ if ($mode === 'quiz') {
                 }
             }
 
-            $quiz_questions_grouped[$quiz->name] = $quiz_qs;
+            $quiz_questions_grouped[$quiz->id] = $quiz_qs;
+            $quiz_id_to_name[$quiz->id] = $quiz->name;
             $questions = array_merge($questions, $quiz_qs);
         }
     }
@@ -227,7 +235,7 @@ if ($download === 'excel') {
     require_once($CFG->dirroot . '/report/questionbank/classes/excel_export.php');
     $exporter = new \report_questionbank\excel_export();
     if ($mode === 'quiz') {
-        $exporter->export_quiz_questions($quiz_questions_grouped, $course->shortname);
+        $exporter->export_quiz_questions($quiz_questions_grouped, $course->shortname, $quiz_id_to_name);
     } else {
         $exporter->export_questions($questions, $course->shortname);
     }
@@ -239,7 +247,7 @@ if ($download === 'pdf') {
     require_once($CFG->dirroot . '/report/questionbank/classes/pdf_export.php');
     $exporter = new \report_questionbank\pdf_export();
     if ($mode === 'quiz') {
-        $exporter->export_quiz_questions($quiz_questions_grouped, $course->fullname);
+        $exporter->export_quiz_questions($quiz_questions_grouped, $course->fullname, $finalexamquizid, $quiz_id_to_name);
     } else {
         $exporter->export_questions($questions, $course->fullname, $finalexamcategoryid, $categoryorder);
     }
@@ -464,21 +472,38 @@ if ($mode === 'questionbank') {
         echo '<th style="padding: 10px; text-align: left;">' . get_string('quizname', 'report_questionbank') . '</th>';
         echo '<th style="padding: 10px; text-align: center; width: 200px;">' . get_string('questioncount', 'report_questionbank') . '</th>';
         echo '<th style="padding: 10px; text-align: center; width: 150px;">Incluir</th>';
+        echo '<th style="padding: 10px; text-align: center; width: 200px;">' . get_string('selectasfinalexam', 'report_questionbank') . '</th>';
         echo '</tr>';
         echo '</thead>';
         echo '<tbody>';
+
+        // "Ninguno" row for quiz final exam radio.
+        echo '<tr>';
+        echo '<td style="padding: 10px;"><em>Ninguno</em></td>';
+        echo '<td style="padding: 10px; text-align: center;">-</td>';
+        echo '<td style="padding: 10px; text-align: center;">-</td>';
+        echo '<td style="padding: 10px; text-align: center;">';
+        echo '<input type="radio" class="quiz-final-exam-radio" name="finalexamquizid" value="0" ' . ($finalexamquizid == 0 ? 'checked' : '') . '>';
+        echo '</td>';
+        echo '</tr>';
 
         foreach ($quizzes as $quiz) {
             $slot_count_sql = "SELECT COUNT(*) as total FROM {quiz_slots} WHERE quizid = :quizid";
             $slot_count = $DB->get_record_sql($slot_count_sql, array('quizid' => $quiz->id));
             $total_questions = $slot_count ? $slot_count->total : 0;
             $is_quiz_selected = ($all_quizzes_selected || in_array($quiz->id, $quizids));
+            $is_final_exam_quiz = ($finalexamquizid > 0 && $quiz->id == $finalexamquizid);
+            $qcb_checked = $is_quiz_selected || $is_final_exam_quiz;
+            $qcb_disabled = $is_final_exam_quiz ? 'disabled' : '';
 
             echo '<tr>';
             echo '<td style="padding: 10px;">' . format_string($quiz->name) . '</td>';
             echo '<td style="padding: 10px; text-align: center; font-weight: bold;">' . $total_questions . '</td>';
             echo '<td style="padding: 10px; text-align: center;">';
-            echo '<input type="checkbox" class="quiz-checkbox" name="quizids[]" value="' . $quiz->id . '" ' . ($is_quiz_selected ? 'checked' : '') . '>';
+            echo '<input type="checkbox" class="quiz-checkbox" name="quizids[]" value="' . $quiz->id . '" ' . ($qcb_checked ? 'checked' : '') . ' ' . $qcb_disabled . '>';
+            echo '</td>';
+            echo '<td style="padding: 10px; text-align: center;">';
+            echo '<input type="radio" class="quiz-final-exam-radio" name="finalexamquizid" value="' . $quiz->id . '" ' . ($is_final_exam_quiz ? 'checked' : '') . '>';
             echo '</td>';
             echo '</tr>';
         }
@@ -503,6 +528,9 @@ if (!empty($questions)) {
     if ($mode === 'quiz') {
         foreach ($quizids as $qid) {
             $downloadparams .= '&quizids[]=' . (int)$qid;
+        }
+        if ($finalexamquizid > 0) {
+            $downloadparams .= '&finalexamquizid=' . (int)$finalexamquizid;
         }
     } else {
         foreach ($categoryids as $catid) {
@@ -532,7 +560,8 @@ if ($mode === 'quiz') {
     if (empty($quiz_questions_grouped)) {
         echo '<p>' . get_string('noquizselected', 'report_questionbank') . '</p>';
     } else {
-        foreach ($quiz_questions_grouped as $quizname => $quiz_qs) {
+        foreach ($quiz_questions_grouped as $quizid => $quiz_qs) {
+            $quizname = isset($quiz_id_to_name[$quizid]) ? $quiz_id_to_name[$quizid] : 'Quiz ' . $quizid;
             echo '<h4 style="margin-top: 20px; color: #0f6cbf;">' . format_string($quizname) . ' (' . count($quiz_qs) . ')</h4>';
             if (empty($quiz_qs)) {
                 echo '<p><em>' . get_string('noquestions', 'report_questionbank') . '</em></p>';
@@ -757,6 +786,38 @@ echo '                submitForm();';
 echo '            }';
 echo '        });';
 echo '    }';
+echo '';
+echo '    /* Quiz final exam radios. */';
+echo '    var quizFinalExamRadios = document.querySelectorAll(".quiz-final-exam-radio");';
+echo '    var quizCheckboxesAll = document.querySelectorAll(".quiz-checkbox");';
+echo '';
+echo '    function updateQuizIncludeCheckboxes() {';
+echo '        for (var i = 0; i < quizCheckboxesAll.length; i++) {';
+echo '            var cb = quizCheckboxesAll[i];';
+echo '            var tr = cb.closest("tr");';
+echo '            if (!tr) continue;';
+echo '            var rowRadio = tr.querySelector(".quiz-final-exam-radio");';
+echo '            if (rowRadio && rowRadio.checked) {';
+echo '                cb.disabled = true;';
+echo '                cb.checked = true;';
+echo '                cb.style.opacity = "0.5";';
+echo '                cb.style.cursor = "not-allowed";';
+echo '            } else {';
+echo '                cb.disabled = false;';
+echo '                cb.style.opacity = "1";';
+echo '                cb.style.cursor = "pointer";';
+echo '            }';
+echo '        }';
+echo '    }';
+echo '';
+echo '    for (var i = 0; i < quizFinalExamRadios.length; i++) {';
+echo '        quizFinalExamRadios[i].addEventListener("change", function() {';
+echo '            updateQuizIncludeCheckboxes();';
+echo '            submitForm();';
+echo '        });';
+echo '    }';
+echo '';
+echo '    updateQuizIncludeCheckboxes();';
 echo '';
 echo '    /* Quiz checkboxes. */';
 echo '    var quizCheckboxes = document.querySelectorAll(".quiz-checkbox");';

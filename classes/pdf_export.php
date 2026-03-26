@@ -209,10 +209,12 @@ class pdf_export extends \pdf {
     /**
      * Export quiz-based questions to PDF file.
      *
-     * @param array $quiz_questions_grouped Associative array of quiz name => question objects
+     * @param array $quiz_questions_grouped Associative array of quiz ID => question objects
      * @param string $coursename Name of the course for filename
+     * @param int $finalexamquizid Quiz ID selected as final exam (0 = none)
+     * @param array $quiz_id_to_name Mapping of quiz ID => quiz name
      */
-    public function export_quiz_questions($quiz_questions_grouped, $coursename) {
+    public function export_quiz_questions($quiz_questions_grouped, $coursename, $finalexamquizid = 0, $quiz_id_to_name = array()) {
         global $DB;
 
         $filename = clean_filename('quiz_questions_' . $coursename . '_' . date('Y-m-d')) . '.pdf';
@@ -236,9 +238,76 @@ class pdf_export extends \pdf {
         $this->Ln(10);
         $this->MultiCell(0, 15, $this->clean_text($coursename), 0, 'C', 0, 1);
 
-        // Each quiz as a section.
+        // Identify the final exam quiz name (if any) to split sections.
+        $finalexamquizname = '';
+        if ($finalexamquizid > 0 && isset($quiz_id_to_name[$finalexamquizid])) {
+            $finalexamquizname = $quiz_id_to_name[$finalexamquizid];
+        }
+
+        // 2. EXAMEN FINAL section.
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 20);
+        $this->Ln(80);
+        $this->Cell(0, 15, 'EXAMEN FINAL', 0, 1, 'C');
+
+        $this->AddPage();
+        $this->SetFont('helvetica', '', 11);
+        $description = 'Las preguntas del curso se estructuran en bancos de preguntas que contienen un número superior al de ítems incluidos en cada test. Esta organización tiene como objetivo que, en caso de que el alumnado rehaga el cuestionario, se le presenten preguntas diferentes en cada intento. Asimismo, de estos mismos bancos de preguntas se extraen los ítems que conforman el test final del curso.';
+        $this->MultiCell(0, 5, $description, 0, 'L');
+        $this->Ln(10);
+
+        // Determine which questions to sample for final exam.
+        $final_exam_pool = array();
+        if ($finalexamquizid > 0) {
+            if (isset($quiz_questions_grouped[$finalexamquizid])) {
+                $final_exam_pool = $quiz_questions_grouped[$finalexamquizid];
+            }
+        } else {
+            // Pool from all quizzes.
+            foreach ($quiz_questions_grouped as $qqs) {
+                $final_exam_pool = array_merge($final_exam_pool, $qqs);
+            }
+        }
+
+        if (empty($final_exam_pool)) {
+            $this->SetFont('helvetica', '', 11);
+            $this->MultiCell(0, 5, 'No hay preguntas disponibles para el examen final.', 0, 'L');
+        } else {
+            $sample_count = min(max(5, min(10, count($final_exam_pool))), count($final_exam_pool));
+            $sample_questions = $this->get_random_questions($final_exam_pool, $sample_count);
+
+            $headerwidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $this->SetX($this->lMargin);
+            $this->SetFont('helvetica', 'B', 14);
+            $this->SetFillColor(15, 108, 191);
+            $this->SetTextColor(255, 255, 255);
+            $this->setCellPaddings(8, 4, 8, 4);
+            $this->MultiCell($headerwidth, 0, 'Muestra de ' . $sample_count . ' preguntas del banco:', 0, 'L', true, 1, '', '', true, 0, false, true, 0, 'T');
+            $this->setCellPaddings(0, 0, 0, 0);
+            $this->SetTextColor(0, 0, 0);
+            $this->Ln(10);
+
+            foreach ($sample_questions as $question) {
+                $this->display_question($question, $DB);
+            }
+        }
+
+        // 3. EVALUACIÓN PARCIAL cover page.
+        $this->AddPage();
+        $this->SetFont('helvetica', 'B', 20);
+        $this->Ln(80);
+        $this->Cell(0, 15, 'EVALUACIÓN PARCIAL', 0, 1, 'C');
+
+        // 4. Each quiz as a section (excluding the final exam quiz).
         $quiz_number = 1;
-        foreach ($quiz_questions_grouped as $quizname => $quiz_qs) {
+        foreach ($quiz_questions_grouped as $quizid => $quiz_qs) {
+            // Skip the final exam quiz in the partial evaluation section.
+            if ($finalexamquizid > 0 && $quizid == $finalexamquizid) {
+                continue;
+            }
+
+            $quizname = isset($quiz_id_to_name[$quizid]) ? $quiz_id_to_name[$quizid] : 'Quiz ' . $quizid;
+
             $this->AddPage();
 
             // Quiz header.

@@ -129,17 +129,20 @@ class excel_export {
     /**
      * Export quiz-based questions to Excel file.
      *
-     * @param array $quiz_questions_grouped Associative array of quiz name => question objects
+     * @param array $quiz_questions_grouped Associative array of quiz ID => question objects
      * @param string $coursename Name of the course for filename
+     * @param array $quiz_id_to_name Mapping of quiz ID => quiz name
      */
-    public function export_quiz_questions($quiz_questions_grouped, $coursename) {
+    public function export_quiz_questions($quiz_questions_grouped, $coursename, $quiz_id_to_name = array()) {
         global $DB;
 
         $filename = clean_filename('quiz_questions_' . $coursename . '_' . date('Y-m-d')) . '.xlsx';
 
         $workbook = new \MoodleExcelWorkbook($filename);
 
-        foreach ($quiz_questions_grouped as $quizname => $quiz_qs) {
+        foreach ($quiz_questions_grouped as $quizid => $quiz_qs) {
+            // Resolve quiz name from mapping.
+            $quizname = isset($quiz_id_to_name[$quizid]) ? $quiz_id_to_name[$quizid] : 'Quiz ' . $quizid;
             // Truncate sheet name to 31 chars (Excel limit).
             $sheetname = $this->clean_text($quizname);
             if (strlen($sheetname) > 31) {
